@@ -347,22 +347,53 @@ def load_policy(path):
 
 
 def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None,
-             game_factory=OriginalGame):
+             game_factory=OriginalGame,target_level=30,context_selector=None):
+    """Reach a native level from18 at a settled controller boundary and replay.
+
+    target_level255 means reaching255, not clearing it or certifying rebirth.
+    It requires the first-cycle line window3290..3293 and valid per-piece
+    original counter transitions; replaying corrupted RAM cannot certify it.
+    max_frames bounds gameplay frames after menu entry, not reconstruction time.
+    context_selector optionally replaces feature/model selection, using only
+    the same observation and approximate proposal interface as the defaults.
+    """
+    if isinstance(target_level,bool) or not isinstance(target_level,int) or not 19<=target_level<=255:
+        raise ValueError('target_level must be an integer from19 through255 for a level18 start')
+    if isinstance(max_frames,bool) or not isinstance(max_frames,int) or max_frames<1:
+        raise ValueError('max_frames must be a positive integer gameplay-frame budget')
+    if context_selector is not None and (model is not None or not callable(context_selector)):
+        raise ValueError('context_selector must be callable and cannot be combined with a model')
+    from nes_original.progression import MarathonProgress
     config=config or getattr(model,'feature_config',None) or Config()
-    encoder=FeatureEncoder(config)
+    encoder=FeatureEncoder(config) if context_selector is None else None
     rows = []
     for seed in seeds:
         controller = FeedbackController(fixed_reaction=not runtime,tap_period=config.tap_period,
-            context_selector=(lambda obs,plan: values(model,encoder(obs,plan)).argmax()) if model else
-                     (lambda obs,plan: encoder(obs,plan)[:,-1].argmax()))
+            context_selector=context_selector if context_selector is not None else
+                ((lambda obs,plan: values(model,encoder(obs,plan)).argmax()) if model else
+                 (lambda obs,plan: encoder(obs,plan)[:,-1].argmax())))
         with game_factory() as game:
             o = game.reset(start_level=18,seed=int(seed))
             error = None
-            while not o.over and (o.level < 30 or controller.stage is not None) and o.frames < max_frames:
+            peak_level = o.level
+            target_reached = False
+            progress = MarathonProgress(18,0,o.placements)
+            progress_counters = progress.update(o.level,o.lines,o.placements)
+            while not o.over and not target_reached and o.frames < max_frames:
                 before = o
                 try:
                     o = game.step(controller.command(o))
                     controller.transition(before,o)
+                    if controller.stage is None and o.phase==1 and not o.over:
+                        try:
+                            if o.placements-progress.placements>1:
+                                raise ValueError('Missed a settled piece boundary')
+                            progress_counters = progress.update(o.level,o.lines,o.placements)
+                        except ValueError as exc:
+                            raise RuntimeError(f'Progress counter audit failed: {exc}') from exc
+                        peak_level = max(peak_level,progress.level)
+                        target_reached = progress.level>=target_level and (target_level!=255 or
+                            (progress.level_cycles==0 and 3290<=progress.absolute_lines<=3293))
                 except (AssertionError,RuntimeError) as exc:
                     error = str(exc)
                     # Both native backends expose a non-advancing observation.
@@ -378,9 +409,13 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
             case_path = Path(output)/f'seed-{seed}-case.json'
             row = dict(seed=int(seed),level=o.level,lines=o.lines,score=o.score,backend=backend,
                 placements=o.placements,success=False,
-                over=o.over,error=error,censored=not o.over and o.level<30,
+                over=o.over,error=error,censored=not o.over and not target_reached,
                 exact_ram_rgb_replay=False,controller=controller.stats(),
-                case_state='verification_pending')
+                case_state='verification_pending',start_level=18,target_level=target_level,
+                target_reached=target_reached,peak_level=peak_level,
+                frames=o.frames,max_frames=max_frames,
+                progress=progress_counters,
+                target_criterion='Audited native counters at a settled active-piece controller boundary')
             # Write gameplay telemetry before screen capture/core shutdown or
             # fresh-process reconstruction can fail or be interrupted.
             write_json(case_path,row)
@@ -404,7 +439,7 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
             write_json(case_path,row)
             raise
         row.update(case_state='verified',exact_ram_rgb_replay=True,
-                   success=o.level>=30 and not error)
+                   success=target_reached and not error)
         write_json(case_path,row)
         rows.append(row)
         write_json(Path(output)/'results.json',rows)

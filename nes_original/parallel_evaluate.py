@@ -16,7 +16,7 @@ import time
 _INITIALIZED=False
 
 
-def _group(index,seeds,policy,expected_hash,config,output,mask,mesen,jit_deps,runtime,max_frames):
+def _group(index,seeds,policy,expected_hash,config,output,mask,mesen,jit_deps,runtime,max_frames,target_level):
     global _INITIALIZED
     if jit_deps: sys.path.insert(0,jit_deps)
     from nes_original.verify_batch import limit_cpu
@@ -40,7 +40,7 @@ def _group(index,seeds,policy,expected_hash,config,output,mask,mesen,jit_deps,ru
         from nes_original.mesen import MesenGame
         factory=lambda:MesenGame(executable=mesen,session_root=folder/'reference-sessions',affinity=mask)
     rows=evaluate(model,folder,seeds=seeds,runtime=runtime,max_frames=max_frames,
-        config=cfg,game_factory=factory)
+        config=cfg,game_factory=factory,target_level=target_level)
     for row in rows:
         row.update(evaluation_worker=index,worker_pid=os.getpid(),worker_cpu_mask=mask,
             proof=f'worker{index}/seed-{row["seed"]}.json')
@@ -48,7 +48,11 @@ def _group(index,seeds,policy,expected_hash,config,output,mask,mesen,jit_deps,ru
 
 
 def evaluate_parallel(policy,output, *, seeds,config,workers=2,masks=(1,256),
-                      mesen=None,jit_deps=None,runtime=True,max_frames=120000):
+                      mesen=None,jit_deps=None,runtime=True,max_frames=120000,target_level=30):
+    if isinstance(target_level,bool) or not isinstance(target_level,int) or not 19<=target_level<=255:
+        raise ValueError('target_level must be an integer from19 through255 for a level18 start')
+    if isinstance(max_frames,bool) or not isinstance(max_frames,int) or max_frames<1:
+        raise ValueError('max_frames must be a positive integer gameplay-frame budget')
     seeds=[int(seed) for seed in seeds]
     if not seeds or len(set(seeds))!=len(seeds):
         raise ValueError('Pass distinct menu-wait seeds')
@@ -66,7 +70,8 @@ def evaluate_parallel(policy,output, *, seeds,config,workers=2,masks=(1,256),
     plan=dict(policy=policy,policy_sha256=expected_hash,config=config,seeds=seeds,
         requested_workers=workers,cpu_masks=selected,seed_groups=groups,
         backend='MesenGame' if mesen else 'OriginalGame/nes-py',runtime_latency_charged=runtime,
-        max_frames=max_frames,proofs='Every game reconstructed in a fresh emulator, no deferred checks')
+        start_level=18,target_level=target_level,max_frames=max_frames,
+        proofs='Every game reconstructed in a fresh emulator, no deferred checks')
     (output/'parallel-protocol.json').write_text(json.dumps(plan,indent=2)+'\n',encoding='utf-8')
     started=time.perf_counter()
     rows=[]
@@ -74,7 +79,7 @@ def evaluate_parallel(policy,output, *, seeds,config,workers=2,masks=(1,256),
         with ProcessPoolExecutor(max_workers=workers,mp_context=multiprocessing.get_context('spawn')) as pool:
             tasks=[pool.submit(_group,i,group,policy,expected_hash,config,str(output.resolve()),mask,
                 str(Path(mesen).resolve()) if mesen else None,
-                str(Path(jit_deps).resolve()) if jit_deps else None,runtime,max_frames)
+                str(Path(jit_deps).resolve()) if jit_deps else None,runtime,max_frames,target_level)
                 for i,(group,mask) in enumerate(zip(groups,selected)) if group]
             for task in tasks: rows.extend(task.result())
     except Exception as error:
