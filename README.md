@@ -6,6 +6,12 @@ neural policy, reachable-move planning, and reproducible evaluation.
 The checkpoint before NES work is documented in [CHECKPOINT.md](CHECKPOINT.md),
 including retained results and instructions for restoring models and saved games.
 
+Experimental NES work lives separately under [nes/](nes/README.md). Run
+`.\play-nes.ps1` for human play or `.\play-nes.ps1 -Bot -StartLevel 18` for the
+untrained stacking probe. This provisional engine has source-level mechanics
+checks; whole-ROM parity and NES RL training are still pending. The modern
+checkpoint's results do not transfer to NES.
+
 The offline bot uses **legal timed inputs**: move, rotate, hold, and hard drop.
 Gravity and lock timing remain active. The older placement-action training
 sandbox is also included, and its scores are kept separate.

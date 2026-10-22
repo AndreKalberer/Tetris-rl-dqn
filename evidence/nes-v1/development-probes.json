@@ -1,0 +1,363 @@
+{
+  "scope": "Twelve corrected-engine development probes, not trained NES policy or ROM results",
+  "supersedes": "nes-dev-v1: J orientations 4/6 were swapped; old source/probes retained outside Git",
+  "protocols": [
+    {
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 0
+      },
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "max_frames": 36000,
+      "wall_seconds": 15.0,
+      "source_sha256": {
+        "nes/engine.py": "49785604722098eaef2d287f5e67e3e29151d0aac40a0ea951e1c1240f1aa006",
+        "nes/controller.py": "568200fa1d78f83b16c3ff36477a1e32d374f307bdc399aff0befcecc99f1e50",
+        "nes/evaluate.py": "c9d26965a7a6a83612f98e14b9a45210b4ff98d31625445d4ceb4a0e8237753e"
+      },
+      "scope": "Development sample only; not a trained policy or emulator-parity result"
+    },
+    {
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 9
+      },
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "max_frames": 36000,
+      "wall_seconds": 15.0,
+      "source_sha256": {
+        "nes/engine.py": "49785604722098eaef2d287f5e67e3e29151d0aac40a0ea951e1c1240f1aa006",
+        "nes/controller.py": "568200fa1d78f83b16c3ff36477a1e32d374f307bdc399aff0befcecc99f1e50",
+        "nes/evaluate.py": "c9d26965a7a6a83612f98e14b9a45210b4ff98d31625445d4ceb4a0e8237753e"
+      },
+      "scope": "Development sample only; not a trained policy or emulator-parity result"
+    },
+    {
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 18
+      },
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "max_frames": 36000,
+      "wall_seconds": 15.0,
+      "source_sha256": {
+        "nes/engine.py": "49785604722098eaef2d287f5e67e3e29151d0aac40a0ea951e1c1240f1aa006",
+        "nes/controller.py": "568200fa1d78f83b16c3ff36477a1e32d374f307bdc399aff0befcecc99f1e50",
+        "nes/evaluate.py": "c9d26965a7a6a83612f98e14b9a45210b4ff98d31625445d4ceb4a0e8237753e"
+      },
+      "scope": "Development sample only; not a trained policy or emulator-parity result"
+    },
+    {
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 19
+      },
+      "seeds": [
+        0,
+        1,
+        2
+      ],
+      "max_frames": 36000,
+      "wall_seconds": 15.0,
+      "source_sha256": {
+        "nes/engine.py": "49785604722098eaef2d287f5e67e3e29151d0aac40a0ea951e1c1240f1aa006",
+        "nes/controller.py": "568200fa1d78f83b16c3ff36477a1e32d374f307bdc399aff0befcecc99f1e50",
+        "nes/evaluate.py": "c9d26965a7a6a83612f98e14b9a45210b4ff98d31625445d4ceb4a0e8237753e"
+      },
+      "scope": "Development sample only; not a trained policy or emulator-parity result"
+    }
+  ],
+  "games": [
+    {
+      "seed": 0,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 0
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 120,
+      "lines": 34,
+      "score": 4331,
+      "level": 3,
+      "frames": 8429,
+      "simulated_seconds": 140.2523844070098,
+      "wall_seconds": 0.3319549999869196,
+      "planning_seconds": 0.17808179988060147,
+      "plans": 121,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "8acea54d874a6269a2bcb8d04b5d7d640fbf8539c659f400c0739c259f5f6ebe",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 1,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 0
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 514,
+      "lines": 195,
+      "score": 92436,
+      "level": 19,
+      "frames": 33669,
+      "simulated_seconds": 560.2274920630695,
+      "wall_seconds": 1.3838536999974167,
+      "planning_seconds": 0.7658210999361472,
+      "plans": 515,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "bcef645b9fb2924092d8d0dae8aaf517347682c7a3454c2b09ce1a577708ac0c",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 2,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 0
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 260,
+      "lines": 91,
+      "score": 22624,
+      "level": 9,
+      "frames": 18079,
+      "simulated_seconds": 300.8213142358916,
+      "wall_seconds": 0.6612721999990754,
+      "planning_seconds": 0.3607717999111628,
+      "plans": 261,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "2d62b3be38e3611c3a3e96f0cc115d538a4deaff223b62de600a7b2e1d604fe3",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 0,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 9
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 391,
+      "lines": 146,
+      "score": 98737,
+      "level": 14,
+      "frames": 23259,
+      "simulated_seconds": 387.01271905595456,
+      "wall_seconds": 0.8939919999975245,
+      "planning_seconds": 0.5050693002121989,
+      "plans": 392,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "7ab69ac5c1e91661ac9021e4a294c05e5e2b0aa2eaf449a9414784545be0bbde",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 1,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 9
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 247,
+      "lines": 88,
+      "score": 41325,
+      "level": 9,
+      "frames": 15657,
+      "simulated_seconds": 260.52100873894324,
+      "wall_seconds": 0.6626063000003342,
+      "planning_seconds": 0.3706605000043055,
+      "plans": 248,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "b2334331639aadb492341c10799c7ce8087fd13c0c20b02f5930108fbff3d3e1",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 2,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 9
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 262,
+      "lines": 91,
+      "score": 42547,
+      "level": 9,
+      "frames": 16294,
+      "simulated_seconds": 271.1202220343834,
+      "wall_seconds": 0.6339344000007259,
+      "planning_seconds": 0.3512784000195097,
+      "plans": 263,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "fb1222dfdeadbe2c6c35a1ea5cf9c836322abac1dc6bf635a6b5bd45c0da2b03",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 0,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 18
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 238,
+      "lines": 83,
+      "score": 72114,
+      "level": 18,
+      "frames": 13614,
+      "simulated_seconds": 226.52698556377166,
+      "wall_seconds": 0.532022200000938,
+      "planning_seconds": 0.31397969991667196,
+      "plans": 239,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "388860bf9894ce99541bfb293945bc994381689e5f74b435abfcecaa34d5b6a4",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 1,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 18
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 351,
+      "lines": 132,
+      "score": 131545,
+      "level": 19,
+      "frames": 20259,
+      "simulated_seconds": 337.0949170366131,
+      "wall_seconds": 0.9082665000023553,
+      "planning_seconds": 0.5281572000385495,
+      "plans": 352,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "8deedcf8e2960479b1ca61431404d17e01e2f1e4d5353b05631a0d75a76870e7",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 2,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 18
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 101,
+      "lines": 30,
+      "score": 24312,
+      "level": 18,
+      "frames": 5685,
+      "simulated_seconds": 94.59423482665211,
+      "wall_seconds": 0.24339360000158194,
+      "planning_seconds": 0.1403454999817768,
+      "plans": 102,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "fa1e225afe74b0102f8cfefd0fe983daceffcaeb003ea157b0880280ca24b8c9",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 0,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 19
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 38,
+      "lines": 6,
+      "score": 5397,
+      "level": 19,
+      "frames": 1757,
+      "simulated_seconds": 29.23519271599433,
+      "wall_seconds": 0.09813869999197777,
+      "planning_seconds": 0.060236799996346235,
+      "plans": 39,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "f90eeba9797757ac3635247a91a086003ab452784ab1a7c4487897e6f5992e31",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 1,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 19
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 42,
+      "lines": 5,
+      "score": 4201,
+      "level": 19,
+      "frames": 1867,
+      "simulated_seconds": 31.065512123370187,
+      "wall_seconds": 0.09472979999554809,
+      "planning_seconds": 0.05854039998666849,
+      "plans": 43,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "3d31a568b5fe03eb54995eba81a66caf03a363424b2f22ed3d1d6c085c672b60",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    },
+    {
+      "seed": 2,
+      "rules": {
+        "version": "nes-ntsc-a-provisional-v1",
+        "start_level": 19
+      },
+      "controller": "untrained-stacking-probe",
+      "placements": 50,
+      "lines": 11,
+      "score": 13015,
+      "level": 19,
+      "frames": 2360,
+      "simulated_seconds": 39.26867092188197,
+      "wall_seconds": 0.10266109999793116,
+      "planning_seconds": 0.06341080002312083,
+      "plans": 51,
+      "stopped_by": "natural_top_out",
+      "completed": true,
+      "alive_at_stop": false,
+      "final_state_sha256": "0f32e95de0b2b2bf139dacaa93dba2591183a38fa838118301622be8926158a1",
+      "scope": "Development engine probe; untrained heuristic, uncharged planning latency, ROM parity pending",
+      "replay_verified": true
+    }
+  ],
+  "all_replays_verified": true,
+  "trained_nes_policy": false,
+  "rom_parity_verified": false
+}
