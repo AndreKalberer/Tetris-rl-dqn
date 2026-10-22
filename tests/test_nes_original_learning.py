@@ -10,6 +10,26 @@ import numpy as np
 @unittest.skipUnless(importlib.util.find_spec('nes_py') and importlib.util.find_spec('torch'),
                      'Requires isolated original-game learning environment')
 class OriginalLearningTests(unittest.TestCase):
+    def test_dead_core_capture_preserves_original_failure_and_raw_inputs(self):
+        import json
+        from unittest.mock import Mock
+        from nes_original.learn import save_failure
+        base=Path.cwd()/'.pytest-work/dead-core-failure'
+        base.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as temporary:
+            game=Mock()
+            game.inputs=bytearray([0,128,0,32])
+            game.save_replay.side_effect=RuntimeError('core already exited')
+            game.fingerprint.side_effect=RuntimeError('capture cannot respond')
+            save_failure(game,temporary,RuntimeError('original watchdog failure'),42)
+            folder=Path(temporary)
+            failure=json.loads((folder/'failure.json').read_text())
+            raw=json.loads((folder/'failure-raw-inputs.json').read_text())
+            self.assertIn('original watchdog failure',failure['error'])
+            self.assertEqual(failure['decisions'],42)
+            self.assertEqual(raw['input_hex'],'00800020')
+            self.assertFalse(raw['exact_replay_verified'])
+
     @unittest.skipUnless(importlib.util.find_spec('numba'),'Optional compiled lookahead prior')
     def test_rapid_lookahead_training_resumes_exactly(self):
         import torch

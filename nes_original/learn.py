@@ -1,4 +1,4 @@
-"""Original-game candidate Double DQN; all transitions/rewards run in nes-py."""
+"""Original-game candidate Double DQN; native transitions in the selected core."""
 import argparse
 from dataclasses import asdict, dataclass
 import hashlib
@@ -27,6 +27,23 @@ def write_json(path, data):
     temporary = path.with_suffix(path.suffix+'.tmp')
     temporary.write_text(json.dumps(data,indent=2)+'\n',encoding='utf-8')
     temporary.replace(path)
+
+
+def save_failure(game,folder,error,decisions):
+    """Preserve the original error even when a dead core cannot take a capture."""
+    folder=Path(folder)
+    try:
+        game.save_replay(folder/'failure-replay.json')
+    except Exception as capture_error:
+        diagnostic=dict(rom_sha256=ROM_SHA256,input_hex=game.inputs.hex(),
+            backend=type(game).__name__,capture_error=repr(capture_error),
+            exact_replay_verified=False)
+        try:
+            diagnostic['fingerprint']=game.fingerprint()
+        except Exception as fingerprint_error:
+            diagnostic['fingerprint_error']=repr(fingerprint_error)
+        write_json(folder/'failure-raw-inputs.json',diagnostic)
+    write_json(folder/'failure.json',dict(error=repr(error),decisions=decisions))
 
 
 @dataclass
@@ -126,14 +143,15 @@ def execute(game, plan, selected, *, tap_period=0):
 
 
 class Trainer:
-    def __init__(self, config):
+    def __init__(self, config, *, game_factory=OriginalGame):
         self.config = config
+        self.game_factory = game_factory
         self.rules=ActionRules(horizontal_period=config.tap_period)
         self.encoder=FeatureEncoder(config)
         torch.set_num_threads(config.threads)
         torch.manual_seed(config.seed)
         self.rng = np.random.default_rng(config.seed)
-        self.game = OriginalGame()
+        self.game = game_factory()
         self.step = self.updates = self.episodes = self.placements = 0
         self.position = 0
         self.replay = []
@@ -179,9 +197,12 @@ class Trainer:
         o = self.game.observe()
         if replay_dir:
             record = self.game.replay()
-            with OriginalGame() as other:
+            # The reference core has a bounded host-idle watchdog. End the
+            # completed episode before spending time reconstructing its proof.
+            self.game.close()
+            with self.game_factory() as other:
                 other.load_replay(record)
-            self.game.save_replay(Path(replay_dir)/f'episode-{self.episodes:05d}.json')
+            write_json(Path(replay_dir)/f'episode-{self.episodes:05d}.json',record)
         self.history.append(dict(seed=self.game.seed,level=o.level,lines=o.lines,
             score=o.score,placements=o.placements,decisions=self.episode_decisions,
             completed_level29=o.level>=30,over=o.over,exact_ram_rgb_replay=bool(replay_dir)))
@@ -272,18 +293,22 @@ class Trainer:
         temp.replace(path)
 
     @classmethod
-    def load(cls,path):
+    def load(cls,path, *, game_factory=OriginalGame):
         data = torch.load(path,map_location='cpu',weights_only=False)
         if data['kind'] not in (KIND,LEGACY_KIND) or data['rom_sha256'] != ROM_SHA256:
             raise ValueError('Not an original-game training checkpoint')
         if data.get('torch_version',str(torch.__version__)) != str(torch.__version__):
             raise ValueError('Use the recorded PyTorch version for exact trainer resume')
-        obj = cls(Config(**data['config']))
+        obj = cls(Config(**data['config']),game_factory=game_factory)
         for name in ('online','target','optimizer'):
             getattr(obj,name).load_state_dict(data[name])
         for name in ('replay','position','step','updates','episodes','placements','history','loss','episode_decisions'):
             setattr(obj,name,data[name])
-        obj.game.load_replay(data['game'])
+        try:
+            obj.game.load_replay(data['game'])
+        except Exception:
+            obj.close()
+            raise
         obj.audit_totals = data.get('audit_totals',obj.audit_totals)
         obj.plan = proposals(obj.game.observe(),obj.rules,board_input=True)
         obj.rng.bit_generator.state = data['rng']
@@ -292,10 +317,20 @@ class Trainer:
 
     def export(self,path):
         torch.save(dict(kind=KIND,rom_sha256=ROM_SHA256,dim=self.dim,online=self.online.state_dict(),
-            config=asdict(self.config),torch_version=str(torch.__version__),decisions=self.step,updates=self.updates),path)
+            config=asdict(self.config),torch_version=str(torch.__version__),decisions=self.step,updates=self.updates,
+            training_backend=type(self.game).__name__,game_identity=getattr(self.game,'identity',None)),path)
 
     def close(self):
         self.game.close()
+
+    def evaluate(self,model,output,**kwargs):
+        """Park the training core while a separate core evaluates the policy."""
+        record=self.game.replay()
+        self.game.close()
+        try:
+            return evaluate(model,output,config=self.config,game_factory=self.game_factory,**kwargs)
+        finally:
+            self.game.load_replay(record)
 
 
 def load_policy(path):
@@ -311,7 +346,8 @@ def load_policy(path):
     return model,data
 
 
-def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None):
+def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None,
+             game_factory=OriginalGame):
     config=config or getattr(model,'feature_config',None) or Config()
     encoder=FeatureEncoder(config)
     rows = []
@@ -319,7 +355,7 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
         controller = FeedbackController(fixed_reaction=not runtime,tap_period=config.tap_period,
             context_selector=(lambda obs,plan: values(model,encoder(obs,plan)).argmax()) if model else
                      (lambda obs,plan: encoder(obs,plan)[:,-1].argmax()))
-        with OriginalGame() as game:
+        with game_factory() as game:
             o = game.reset(start_level=18,seed=int(seed))
             error = None
             while not o.over and (o.level < 30 or controller.stage is not None) and o.frames < max_frames:
@@ -331,11 +367,12 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
                     error = str(exc)
                     break
             record = game.replay()
-            with OriginalGame() as other:
-                other.load_replay(record)
             path = Path(output)/f'seed-{seed}.json'
-            game.save_replay(path)
-            rows.append(dict(seed=int(seed),level=o.level,lines=o.lines,score=o.score,
+            write_json(path,record)
+            backend=type(game).__name__
+        with game_factory() as other:
+            other.load_replay(record)
+        rows.append(dict(seed=int(seed),level=o.level,lines=o.lines,score=o.score,backend=backend,
                 placements=o.placements,success=o.level>=30 and not error,
                 over=o.over,error=error,censored=not o.over and o.level<30,
                 exact_ram_rgb_replay=True,controller=controller.stats()))
@@ -374,6 +411,7 @@ def main():
     p.add_argument('--steps',type=int,default=10000)
     p.add_argument('--check-every',type=int,default=2500)
     p.add_argument('--resume',type=Path)
+    p.add_argument('--mesen',type=Path,help='Use an existing dedicated portable MesenCE build')
     p.add_argument('--prior',choices=['heuristic','lookahead'],default='heuristic')
     p.add_argument('--tap-period',type=int,default=0)
     p.add_argument('--jit-deps',type=Path)
@@ -385,6 +423,11 @@ def main():
     if args.output.exists() and any(args.output.iterdir()) and not args.resume:
         p.error('Output is not empty; use a new directory or explicitly resume a checkpoint')
     args.output.mkdir(parents=True,exist_ok=True)
+    game_factory=OriginalGame
+    if args.mesen:
+        from nes_original.mesen import MesenGame
+        game_factory=lambda:MesenGame(executable=args.mesen,
+            session_root=args.output/'reference-sessions',transport='pipe')
     mask = cpu_limits(args.cpu_mask)
     lock = args.output/'RUNNING.lock'
     try:
@@ -423,6 +466,7 @@ def main():
     status('running','initializing')
     protocol_path = args.output/('protocol.json' if not args.resume else f'protocol-resume-{time.time_ns()}.json')
     write_json(protocol_path,dict(kind=KIND,rom_sha256=ROM_SHA256,
+        backend='MesenGame' if args.mesen else 'OriginalGame/nes-py',
         training_seeds=args.seeds,steps_per_seed=args.steps,training_menu_wait_range=[0,511],
         validation_menu_wait_seeds=VALIDATION_SEEDS,starting_level=18,target_level=30,
         teacher_rollout_decisions=1024 if args.prior=='lookahead' else 256,
@@ -450,13 +494,13 @@ def main():
                 epsilon_start=.01 if args.prior=='lookahead' else .05,
                 epsilon_final=.002 if args.prior=='lookahead' else .01,
                 exploration_top_k=4 if args.prior=='lookahead' else 0)
-            current = Trainer.load(args.resume) if args.resume else Trainer(config)
+            current = Trainer.load(args.resume,game_factory=game_factory) if args.resume else Trainer(config,game_factory=game_factory)
             if current.config.seed != seed:
                 raise ValueError('Resume seed does not match requested seed')
             status('running','initial-validation')
             if not args.resume:
                 current.export(folder/'policy-0.pt')
-                initial = evaluate(None,folder/'baseline',config=current.config)
+                initial = current.evaluate(None,folder/'baseline')
                 best = rank(initial)
                 current.export(folder/'best.pt')
                 write_json(folder/'selection.json',dict(step=0,rank=best,rows=initial))
@@ -483,7 +527,7 @@ def main():
                     current.save(folder/f'checkpoint-{current.step}.pt')
                     current.export(folder/f'policy-{current.step}.pt')
                     status('running','validation')
-                    rows = evaluate(current.online,folder/f'validation-{current.step}')
+                    rows = current.evaluate(current.online,folder/f'validation-{current.step}')
                     if rank(rows) > best:
                         best = rank(rows)
                         current.export(folder/'best.pt')
@@ -491,7 +535,7 @@ def main():
                     current.save(folder/'latest.pt')
             model,metadata = load_policy(folder/'best.pt')
             status('running','charged-runtime-evaluation')
-            runtime = evaluate(model,folder/f'selected-runtime-through-{current.step}',runtime=True)
+            runtime = current.evaluate(model,folder/f'selected-runtime-through-{current.step}',runtime=True)
             finished.append(dict(seed=seed,decisions=current.step,updates=current.updates,
                 selected_decisions=metadata['decisions'],selected_rank=best,
                 best_training_lines=max((r['lines'] for r in current.history),default=0),
@@ -503,14 +547,9 @@ def main():
     except Exception as exc:
         if current:
             folder = args.output/f'seed{current.config.seed}'
-            try:
-                current.game.save_replay(folder/'failure-replay.json')
-            except Exception:
-                write_json(folder/'failure-raw-inputs.json',dict(rom_sha256=ROM_SHA256,
-                    input_hex=current.game.inputs.hex(),fingerprint=current.game.fingerprint()))
+            save_failure(current.game,folder,exc,current.step)
             # Failure state may be mid-action; keep the last clean training
             # checkpoint for resuming, never save a partial decision as clean.
-            write_json(folder/'failure.json',dict(error=repr(exc),decisions=current.step))
         status('failed',repr(exc))
         raise
     finally:

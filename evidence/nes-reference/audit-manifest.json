@@ -1,0 +1,167 @@
+{
+  "date": "2026-10-22",
+  "nes_py_source_archive_sha256": "f9aafc42a90600af39e844b6c0a153fdfc2b7635997cb70be345c22e58b4557b",
+  "mesence_zip_sha256": "c19e10b3b3865eb0e86e4d01bf09a5027a4452081c04b5bd5b6cbbf76e346fd6",
+  "original_rom_private_path_used_in_place": true,
+  "nintendo_rom_copied": false,
+  "authored_diagnostic": {
+    "scope": "Self-authored synthetic CPU diagnostic, NOT Tetris gameplay or a legal-game score",
+    "installed_nes_py": "9.0.1",
+    "probe": "JAM opcode$02 must make post-opcode writes unreachable",
+    "results": [
+      {
+        "kind": "jmp_self",
+        "rom_sha256": "2395804fd5ac9662ed6cdf1bf9c48f711975b1fc8bacad40c5259f7281303948",
+        "native_steps": [
+          {
+            "before_marker": 165,
+            "after_marker": 0,
+            "counter": 0
+          },
+          {
+            "before_marker": 165,
+            "after_marker": 0,
+            "counter": 0
+          },
+          {
+            "before_marker": 165,
+            "after_marker": 0,
+            "counter": 0
+          }
+        ]
+      },
+      {
+        "kind": "nop",
+        "rom_sha256": "99177afb708b2b852699bb564465a36e3d8dfbadd7a6200dfcc3939cc9da9ed5",
+        "native_steps": [
+          {
+            "before_marker": 165,
+            "after_marker": 90,
+            "counter": 134
+          },
+          {
+            "before_marker": 165,
+            "after_marker": 90,
+            "counter": 17
+          },
+          {
+            "before_marker": 165,
+            "after_marker": 90,
+            "counter": 155
+          }
+        ]
+      },
+      {
+        "kind": "jam02",
+        "rom_sha256": "1e5f81cf5606c991a3761c19931a35b565e1c13c9b268548589df1469ec2040d",
+        "native_steps": [
+          {
+            "before_marker": 165,
+            "after_marker": 90,
+            "counter": 134
+          },
+          {
+            "before_marker": 165,
+            "after_marker": 90,
+            "counter": 17
+          },
+          {
+            "before_marker": 165,
+            "after_marker": 90,
+            "counter": 156
+          }
+        ]
+      }
+    ],
+    "jam_post_marker_executed": true
+  },
+  "independent_reference": {
+    "jmp_self": {
+      "before_marker": 165,
+      "after_marker": 0,
+      "counter": 0,
+      "frames": 3
+    },
+    "nop": {
+      "before_marker": 165,
+      "after_marker": 90,
+      "counter": 97,
+      "frames": 3
+    },
+    "jam02": {
+      "before_marker": 165,
+      "after_marker": 0,
+      "counter": 0,
+      "frames": 3
+    }
+  },
+  "original_game_driver_smoke": {
+    "scope": "Independent original-ROM driver smoke; snapshot test is not uninterrupted gameplay",
+    "reason": "smoke-passed",
+    "frames": 522,
+    "input_polls": 521,
+    "game_frames": 180,
+    "game_started_frame": 342,
+    "initial_level": 18,
+    "final_level": 18,
+    "final_phase": 1,
+    "read_only_ram": true,
+    "game_ram_writes_by_script": 0,
+    "rom_sha1": "77747840541BFC62A28A5957692A98C550BD6B2B",
+    "snapshot_bytes": 7110,
+    "snapshot_restored": true,
+    "immediate_ram_equal": true,
+    "thirty_frame_continuation_ram_equal": true,
+    "state_keys": 308,
+    "input_polls_per_video_frame_histogram": {
+      "1": 521,
+      "0": 1
+    },
+    "rom_frame_delta_histogram_excluding_restore": {
+      "1": 177
+    }
+  },
+  "signed_cpu_cycles_overflow_step": 72110,
+  "files": {
+    "diagnose_kil.py": "fed752931dbd8eb2310d67adc239be51536cf2b145fd1d3da117073c522e2419",
+    "kil-diagnostic-initial.json": "ba5e3b1210d35d1f055eeccc76f64c85ba52410e2b5797bbfe0585a9fa0e013c",
+    "kil-diagnostic.json": "88f83165cc896925dfe03843adc01535510138353733758baad5321bb52a3d50",
+    "mesence-check.lua": "999a6988c86366943f75bad84d1399915c8d1bf4a5f0dfc568b3bf11eaca310c",
+    "mesence-jam02-result.json": "aad600e3a62fbe4308f9cf81d7dcf2d9ea778118a5c5dcb123baeecdbd7953e3",
+    "mesence-jmp_self-result.json": "aad600e3a62fbe4308f9cf81d7dcf2d9ea778118a5c5dcb123baeecdbd7953e3",
+    "mesence-local-path.json": "ea3c462497ad713a947f87de65f7e0dc46ed28008e2438d8cb14f75d36ecd036",
+    "mesence-nop-result.json": "5851da5a422842adcfa93e8dfa765ba1bc8e81823a9e577aa529fd612a908370",
+    "mesence-original-smoke-initial.json": "af8be55acdeeea796bc7f416e298150896723b2098f9ec3ce268c1921fd45794",
+    "mesence-original-smoke.json": "6381357e44ffb47daa8a9349748a5141ab48cb5a63d9ae42212cbaba0cefb7e2",
+    "mesence-original-smoke.lua": "4f9c8980a1ec85acd645038f8cfb8f2fddf38c18b1b479bc8b6e78d1564c6d9c",
+    "mesence-release.json": "b28bf2e19b4062a6feed65e04a1a32d102596b156fdcc9d403f162c0720a1eee",
+    "mesence-result.json": "aad600e3a62fbe4308f9cf81d7dcf2d9ea778118a5c5dcb123baeecdbd7953e3",
+    "progression-audit.json": "3dc5f9e1c584e39fe49eef137547013a3f0e2793011a708cd19299e8a5d76993",
+    "progression_audit.py": "303cac75cd587a9f98a34bd3bd2ac22686a2a1c45cc9ee16e4de221a1b5913ec"
+  },
+  "installed_binding_bytes_equal": false,
+  "installed_binding_text_equal": true,
+  "binding_difference_note": "Only line endings differ between sdist and installed wheel; normalized text is identical.",
+  "reference_adapter_files": {
+    "work/Tetris-rl-dqn/nes_original/mesen.py": "78bea4c24cff7b5b055720e59d7ddd83472e01b7da4a3af271aa39acbcaf8635",
+    "work/Tetris-rl-dqn/nes_original/mesen_bridge.lua": "2abc62cb5ee280f116ffb36dcaec2127eaf98b7b816b899a28b363e5d8543366",
+    "work/Tetris-rl-dqn/tests/test_mesen_reference.py": "14a81bc9974bc03650f3a0eae8aa453ce88fde848b9f978e7565fe2eca09c6c6",
+    "work/nes-late-fidelity/reference_adapter_smoke.py": "6126a47b81357523b3945b9bf66372f5668eeb4970936639df4916b45f089702",
+    "work/nes-late-fidelity/reference_controller_smoke.py": "cbcbaffc08c687935d96cd395cc759539a65b06651a82a458530b3fd6046d33e",
+    "work/nes-late-fidelity/reference-adapter-pipe-smoke.json": "61ef1e3b6cad86a010171a46570be879d99e8bfac392862fc5908b2ca22353f7",
+    "work/nes-late-fidelity/reference-adapter-file-smoke.json": "e24ff2b8880a036ab9e7314098d2230d634d73011b8336dfd1cbf086d5810c62",
+    "work/nes-late-fidelity/reference-controller-smoke.json": "9eacd52504ba648fcba4e87e1698ba3e7173a5005b0e308a4282ef327fe904c0"
+  },
+  "reference_adapter_result": {
+    "real_menu_level": 18,
+    "script_ram_writes": 0,
+    "input_pipeline": 0,
+    "default_transport": "pipe",
+    "native_snapshot_api_deferred": true,
+    "adaptive_placements": 20,
+    "adaptive_lines": 7,
+    "adaptive_score": 8930,
+    "adaptive_frames": 1128,
+    "adaptive_fresh_process_replay_exact_ram_rgb_cpu_ppu": true
+  }
+}

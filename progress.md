@@ -1,16 +1,23 @@
 # Progress
 
-Goal: Finish the accepted original-NTSC-NES project: established emulator, normal gravity/frozen legal input and latency rules, level18->29 in >=18/20 reserved games and median >=500k score, three-training-seed honest heuristic comparison, setup/play/evaluate/replays/checkpoints/demo. Preserve the modern project and simulator evidence; no paid cloud resources.
+Goal: Original Nintendo NTSC A-Type, legal controls/normal gravity, start18 clear29/reach30 in >=18/20 untouched reserved games, median >=500k, three-training-seed matched-prior study and reproducible setup/play/evaluate/replays/checkpoints/demo. No paid cloud, merges or releases.
 
-Status: Goal ACTIVE; original modern bot independently running and both scheduled resumptions active. Original-game emulator package is now installed and smoke-tested; model integration remains unfinished.
+Status (2026-10-22T11:39:39-06:00): project goal active, unfinished. First nes-py development clear29 verified:240lines/raw30,230640score,602placements. This is search/controller progress, not a learned gain or Mesen/hardware result. Mesen development clear verified:240lines/raw30,255566score,608placements,33591frames alive; exact fresh-process RAM/RGB/CPU/PPU replay, zero controller/accounting failures. Earlier Mesen181line failure retained. More fixed-setting trials running.
 
-Verified results: Modern saved game read-only verified at 38,666 placements / 15,464 lines alive; isolated source/model hashes match and no simulation frame advanced. Overnight worker compiles, launcher -WhatIf passes. One-time 3:50 AM Denver task created PAUSED. Simulator learning completed 50k RL decisions with no reliable improvement; results remain simulator-only.
+Active study: strong visible-next search prior + tap2 controller, three sequential independent seeds x10000 decisions. Frozen source e70a4d3 at runs/original-level29-20261022-091919/source. Original worker30200 stopped during5000-step validation with no error log; cause unknown. Verified absent outside sandbox. Preserved stale lock and checkpoint5000, resumed same source/optimizer/RNG/replay. Supervisor20264 (launcher28632), current worker32220, current seed0, last read7400decisions. Live outputs/nes-original-training-status.json; do not duplicate. CPU logical5/7, BelowNormal,2threads. Seed0 continuation keeps training/; seeds1/2 use training-seeds1-2/; combined summary at job/three-seed-summary.json. No learning gain yet: step0 selected prior cleared both selection starts; step2500 only1/2. Selection starts are not reserved acceptance.
 
-Active work: Original NES native feedback training; PID25216; three sequential seeds x10000 decisions; clear29/reach30 from18. Live: outputs/nes-original-training-status.json.
+Modern endurance: one requested read-only morning check found PID13672 absent. Last status at10:23AM alive70318lines/175800placements, additional54854lines/137134placements. Last durable checkpoint70156lines/175402placements. No saved top-out/stop reason; empty stderr. Do not restart or alter it. Reserved logical2/4 remain untouched. This status is historical, not a running-process claim.
 
-Next step: Build/test a raw nes-py original-game adapter with controller-driven menus, no reset-time RNG RAM writes, correct button mapping, RAM observations/metrics and exact native-state replay. Only then validate/transfer/train agents and pursue accepted NES benchmarks. Preserve pending simulator checkpoint packaging and original-bot isolation.
+Reference adapter: MesenCE2.2.1 portable, genuine menus, no ROM/RAM/RNG patches. Input pipeline0 vs nes-py1; replay checks core/profile/bridge identity plus fullRAM/RGB/CPU/PPU. Watchdog faults separate from top-outs. Authored CPU diagnostic proves nes-py incorrectly continues after JAM02; Mesen halts. No255->0/endurance certification. Original235 lasts810lines; rawline wrap25600 is separate from level rebirth. Adapter native binary snapshots deferred.
+
+Tests: general99passed/21skip; updated isolated native-learning/lookahead11pass; actual Mesen training/evaluation/resume1pass(43.6s), reference-focused9pass(19.4s). Earlier native base/progression checks retained. Current source docs: docs/NES-ORIGINAL-REFERENCE.md. Do not equate these checks with a strength benchmark.
+
+Scheduling:3:50 one-shot already fulfilled.9AM prompt delivered while work active and its one-shot was deleted successfully after a prior approval-review availability failure. No pending or recurring wakeup was added. The goal tool now returned null then accepted the explicitly requested unfinished objective; it is active, not marked complete.
+
+Next: finish fixed-setting Mesen trials and preserve their proofs; finish three-seed study; freeze selected policies before fresh matched-prior evaluation. Transfer/evaluate selected weights in Mesen separately; eventual production training can select --mesen after the tested integration. Keep all simulator50k/old-held30k negative results, sources and checkpoints. No new large simulator-only training.
 
 ## Milestone history
+
 - 2026-10-21: Started repository exploration. No source changes or training runs performed.
 
 - 2026-10-21: Located public repository AndreKalberer/Tetris-rl-dqn (main at 7d56233), cloned into work/Tetris-rl-dqn. Public account has seven repositories. Tetris repo has one branch, no releases, and no open issues; tracked files contain no checkpoints, automated tests, or CI workflows.

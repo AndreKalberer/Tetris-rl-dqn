@@ -103,11 +103,11 @@ class NextPiece:
 
 
 def episode(seed, *, beam=3, baseline=False, runtime=True, output=None,tap_period=0,jit=False,line_power=1,
-            max_frames=120000, wall_seconds=600):
+            max_frames=120000, wall_seconds=600,game_factory=OriginalGame):
     lookahead = NextPiece(beam,tap_period,jit and not baseline,line_power)
     controller = FeedbackController(fixed_reaction=not runtime,
         context_selector=None if baseline else lookahead,tap_period=tap_period)
-    with OriginalGame() as game:
+    with game_factory() as game:
         o = game.reset(start_level=18,seed=seed)
         started = time.perf_counter()
         error = None
@@ -119,23 +119,47 @@ def episode(seed, *, beam=3, baseline=False, runtime=True, output=None,tap_perio
                 controller.transition(before,o)
             except (AssertionError,RuntimeError,ValueError) as exc:
                 error = repr(exc)
+                o = game.observe()  # A committed frame can precede a watchdog fault.
                 break
-        record = game.replay()
-        with OriginalGame() as replayed:
-            replayed.load_replay(record)
+        capture_error=None
+        try:
+            record = game.replay()
+        except (RuntimeError,ValueError,OSError) as exc:
+            capture_error=repr(exc)
+            record=None
+            error=error or 'Could not capture final replay: '+capture_error
         result = dict(seed=seed,policy='one-ply heuristic' if baseline else 'visible-next-piece beam',
+            backend=type(game).__name__,
             beam=0 if baseline else beam,level=o.level,lines=o.lines,score=o.score,
             placements=o.placements,frames=o.frames,success=o.level>=30 and not error,
             over=o.over,error=error,censored=not o.over and o.level<30,
-            wall_seconds=time.perf_counter()-started,exact_ram_rgb_replay=True,
+            wall_seconds=time.perf_counter()-started,exact_ram_rgb_replay=False,
             controller=controller.stats(),lookahead=lookahead.stats(),
             scope='Original-game development comparison; not reserved acceptance or RL result')
         if output:
             output = Path(output)
             output.mkdir(parents=True,exist_ok=True)
-            game.save_replay(output/'replay.json')
-            (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
-        return result
+            if record is not None:
+                (output/'replay.json').write_text(json.dumps(record,indent=2)+'\n',encoding='utf-8')
+            else:
+                (output/'incomplete-input-diagnostic.json').write_text(json.dumps(dict(
+                    input_hex=game.inputs.hex(),capture_error=capture_error,
+                    exact_replay_verified=False),indent=2)+'\n',encoding='utf-8')
+    # Close the original reference process before a possibly long fresh replay,
+    # rather than leave it waiting on IPC until its idle watchdog terminates it.
+    if record is not None:
+        try:
+            with game_factory() as replayed:
+                replayed.load_replay(record)
+            result['exact_ram_rgb_replay']=True
+        except (RuntimeError,ValueError,OSError) as exc:
+            result['replay_error']=repr(exc)
+            result['success']=False
+    else:
+        result['replay_error']=capture_error
+    if output:
+        (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+    return result
 
 
 def main():
@@ -147,6 +171,7 @@ def main():
     p.add_argument('--jit',action='store_true')
     p.add_argument('--line-power',type=int,choices=[1,2],default=1)
     p.add_argument('--jit-deps',type=Path)
+    p.add_argument('--mesen',type=Path,help='Independent portable reference executable')
     p.add_argument('--fixed-reaction',action='store_true')
     p.add_argument('--output',type=Path,required=True)
     args = p.parse_args()
@@ -159,10 +184,14 @@ def main():
     if args.output.exists():
         p.error('Use a new output directory to preserve prior experiments')
     args.output.mkdir(parents=True)
+    factory=OriginalGame
+    if args.mesen:
+        from nes_original.mesen import MesenGame
+        factory=lambda:MesenGame(executable=args.mesen,session_root=args.output/'reference-sessions',transport='pipe')
     rows = []
     for seed in args.seeds:
         row = episode(seed,beam=args.beam,baseline=args.baseline,runtime=not args.fixed_reaction,tap_period=args.tap_period,jit=args.jit,line_power=args.line_power,
-                      output=args.output/f'seed{seed}')
+                      output=args.output/f'seed{seed}',game_factory=factory)
         rows.append(row)
         (args.output/'results.json').write_text(json.dumps(rows,indent=2)+'\n',encoding='utf-8')
         print(json.dumps(row),flush=True)

@@ -22,6 +22,30 @@ def fixture(next_pose=2,level=18):
 
 
 class LookaheadTests(unittest.TestCase):
+    def test_dead_core_cannot_be_reported_as_a_successful_clear(self):
+        import json
+        from pathlib import Path
+        import tempfile
+        from unittest.mock import MagicMock
+        from nes_original.lookahead import episode
+        game=MagicMock()
+        game.__enter__.return_value=game
+        game.reset.return_value=SimpleNamespace(level=30,lines=240,score=123,
+            placements=600,frames=33000,over=False)
+        game.replay.side_effect=RuntimeError('core no longer responds')
+        game.inputs=bytearray([0,128,0])
+        base=Path.cwd()/'.pytest-work/lookahead-fault'
+        base.mkdir(parents=True,exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as temporary:
+            result=episode(17,output=temporary,game_factory=lambda:game)
+            self.assertFalse(result['success'])
+            self.assertFalse(result['exact_ram_rgb_replay'])
+            self.assertIn('core no longer responds',result['replay_error'])
+            folder=Path(temporary)
+            self.assertFalse((folder/'replay.json').exists())
+            raw=json.loads((folder/'incomplete-input-diagnostic.json').read_text())
+            self.assertEqual(raw['input_hex'],'008000')
+
     def test_visible_next_changes_choice_without_mutating_board(self):
         obs=fixture()
         original=obs.board.copy()

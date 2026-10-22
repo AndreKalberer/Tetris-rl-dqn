@@ -6,6 +6,13 @@ use gym-tetris's TetrisEnv reset/menu helpers, which write the game's RNG RAM.
 The independent provisional simulator and its one-seed learning pilot remain
 under `nes/`; no simulator score becomes an original-game score.
 
+The separate [MesenCE reference adapter](../docs/NES-ORIGINAL-REFERENCE.md) now
+supports gameplay, training, evaluation and exact replay. A development run
+cleared29 from18:240lines/raw30,255566score,608placements. The first nes-py
+clear is retained separately. Neither establishes18/20 reliability or RL gains.
+An authored CPU JAM diagnostic found a nes-py fidelity gap relevant to original
+late-game crashes; do not treat that core as certified for255/rebirth.
+
 ## Setup, run and replay
 
 On Windows with CPython 3.13 and a working bootstrap pip:

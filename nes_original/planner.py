@@ -1,8 +1,8 @@
 """Fast visible-state proposals, checked against original-game execution.
 
 The provisional control model proposes paths; it does not transition this game.
-One controller frame is in flight at steady native frame boundaries. Account for
-that known input before planning, and drain the final input through a real step.
+nes-py has one controller frame in flight; the reference input-polled boundary
+has none. Honor the observation's declared pipeline when projecting/draining.
 """
 from dataclasses import dataclass
 

@@ -15,10 +15,17 @@ def main():
     parser.add_argument('--video',type=Path)
     parser.add_argument('--video-frames',type=int,default=1800)
     parser.add_argument('--video-start-frame',type=int,default=1)
+    parser.add_argument('--mesen',type=Path,help='Portable MesenCE executable for reference-core journals')
     args = parser.parse_args()
     if args.video_start_frame<1:
         parser.error('--video-start-frame must be positive')
     record = json.loads(args.replay.read_text(encoding='utf-8'))
+    factory=OriginalGame
+    if 'mesence' in record.get('protocol',''):
+        if not args.mesen:
+            parser.error('This reference replay needs --mesen with its recorded portable build')
+        from nes_original.mesen import MesenGame
+        factory=lambda:MesenGame(executable=args.mesen,session_root=args.replay.parent/'reference-replay-sessions',transport='pipe')
     writer = None
     frames = 0
     if args.video:
@@ -40,7 +47,7 @@ def main():
             writer.stdin.write(game.screen().tobytes())
             frames += 1
     try:
-        with OriginalGame() as game:
+        with factory() as game:
             game.load_replay(record,callback=capture)
             result = dict(record['result'],exact_ram_rgb_replay=True,video_frames=frames)
     finally:

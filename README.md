@@ -15,6 +15,12 @@ runs Nintendo USA/NTSC A-Type in nes-py, using genuine controller menus and
 read-only RAM observations. It is separate from the simulator and its trained
 policies. The modern checkpoint's results do not transfer to NES.
 
+The [MesenCE reference path](docs/NES-ORIGINAL-REFERENCE.md) now supports original
+gameplay, replay, training and evaluation. nes-py development runs have cleared
+level29 from18 (240lines); reliable clears,500k median score and RL improvement
+remain unproved. A CPU JAM diagnostic found a nes-py fidelity gap, so late-game
+crash/rebirth claims require the independent reference path and further tests.
+
 The offline bot uses **legal timed inputs**: move, rotate, hold, and hard drop.
 Gravity and lock timing remain active. The older placement-action training
 sandbox is also included, and its scores are kept separate.
