@@ -2,7 +2,8 @@
 
 This is an independent mechanics implementation, not a ROM or an emulator.
 The target is Nintendo's USA/NTSC NES Tetris A-Type. Whole-game emulator parity
-has not yet been demonstrated. No NES RL policy has been trained.
+has not yet been demonstrated. Experimental NES learning is documented in
+[TRAINING.md](TRAINING.md); model strength and ROM fidelity are separate claims.
 
 ## Sources and reproducibility
 

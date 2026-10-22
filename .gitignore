@@ -1,4 +1,7 @@
 .venv/
+.venv-original/
+# Game images stay in external, installed dependencies or user-supplied paths.
+*.nes
 __pycache__/
 *.pyc
 *.pyo
@@ -22,3 +25,5 @@ logs/
 !models/seed1-100000.pt
 !models/seed2-60000.pt
 !models/seed2-100000.pt
+!models/nes-seed0-best.pt
+!models/nes-seed0-imitation.pt

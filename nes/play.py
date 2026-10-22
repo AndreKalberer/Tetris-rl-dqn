@@ -53,11 +53,11 @@ class View:
             pg.draw.rect(self.screen,COLORS[TYPE[game.next_orientation]+1],
                 (390+dx*22,382+dy*22,20,20))
         label=('GAME OVER' if game.over else 'PAUSED' if paused else
-               'Untrained stacking probe' if bot else 'Human controls')
+               bot if isinstance(bot,str) else 'Untrained stacking probe' if bot else 'Human controls')
         self.text(label,350,454)
         self.text(f'Phase: {game.phase.name.lower()}',350,491,muted=True)
         self.text('No hold / no hard drop / one-piece preview',350,529,muted=True)
-        self.text('ROM parity and NES RL training are pending',350,556,muted=True)
+        self.text('Whole-ROM parity is pending',350,556,muted=True)
         self.text('Arrows: move/down    X: A (CW)    Z: B (CCW)',34,644,muted=True)
         self.text('B: probe/human    P: pause    R: restart    N: next seed    Esc: quit',34,670,muted=True)
         pg.display.flip()
@@ -68,6 +68,7 @@ def main():
     parser.add_argument('--seed',type=int,default=0)
     parser.add_argument('--start-level',type=int,default=0)
     parser.add_argument('--bot',action='store_true',help='Untrained stacking probe, not the modern policy')
+    parser.add_argument('--checkpoint',type=Path,help='NES-specific learned policy; enables bot mode')
     parser.add_argument('--record',type=Path,help='Headless development-probe recording')
     parser.add_argument('--screenshot',type=Path)
     parser.add_argument('--record-seconds',type=float,default=30)
@@ -83,21 +84,31 @@ def main():
     pygame.init()
     view=View(pygame)
     game=Game(args.seed,rules)
+    def make_controller():
+        if args.checkpoint:
+            from nes.agent import LearnedController
+            return LearnedController(args.checkpoint)
+        return StackingProbe()
     if args.record:
         import cv2
-        from nes.evaluate import episode
+        if args.checkpoint:
+            from nes.agent import episode as learned_episode
+            def episode(seed,level,frames,seconds,callback):
+                return learned_episode(args.checkpoint,seed,level,frames,seconds,callback)
+        else:
+            from nes.evaluate import episode
         args.record.parent.mkdir(parents=True,exist_ok=True)
         writer=cv2.VideoWriter(str(args.record),cv2.VideoWriter_fourcc(*'mp4v'),FPS/3,(800,700))
         if not writer.isOpened():
             raise RuntimeError('Could not create recording')
         def record_frame(current):
             if current.frames%3==0 or current.over:
-                view.draw(current,True)
+                view.draw(current,'NES learned policy' if args.checkpoint else True)
                 rgb=pygame.surfarray.array3d(view.screen).transpose(1,0,2)
                 writer.write(cv2.cvtColor(rgb,cv2.COLOR_RGB2BGR))
         try:
             row,game=episode(args.seed,args.start_level,int(args.record_seconds*FPS),60,record_frame)
-            view.draw(game,True)
+            view.draw(game,'NES learned policy' if args.checkpoint else True)
             if args.screenshot:
                 args.screenshot.parent.mkdir(parents=True,exist_ok=True)
                 pygame.image.save(view.screen,str(args.screenshot))
@@ -109,8 +120,8 @@ def main():
         return
     clock=pygame.time.Clock()
     accumulator=0.0
-    running,paused,bot_mode=True,False,args.bot
-    bot=StackingProbe()
+    running,paused,bot_mode=True,False,args.bot or args.checkpoint is not None
+    bot=make_controller()
     while running:
         dt=clock.tick(120)/1000
         if dt>1:
@@ -123,11 +134,11 @@ def main():
                 elif event.key==pygame.K_p: paused=not paused
                 elif event.key==pygame.K_b:
                     bot_mode=not bot_mode
-                    bot=StackingProbe()
+                    bot=make_controller()
                 elif event.key in (pygame.K_r,pygame.K_n):
                     if event.key==pygame.K_n: args.seed+=1
                     game=Game(args.seed,rules)
-                    bot=StackingProbe()
+                    bot=make_controller()
                     accumulator=0.0
         keys=pygame.key.get_pressed()
         buttons=(int(Buttons.LEFT) if keys[pygame.K_LEFT] else 0)|(
@@ -142,9 +153,16 @@ def main():
         else:
             accumulator+=dt
             while accumulator>=1/FPS and not game.over:
-                game.tick(bot.command(game.observe()) if bot_mode else buttons)
+                try:
+                    command=bot.command(game.observe()) if bot_mode else buttons
+                except RuntimeError as error:
+                    if type(error).__name__!='PlanningBudgetExceeded': raise
+                    paused=True
+                    accumulator=0.0
+                    break
+                game.tick(command)
                 accumulator-=1/FPS
-        view.draw(game,bot_mode,paused)
+        view.draw(game,(getattr(bot,'name','Bot') if bot_mode and args.checkpoint else bot_mode),paused)
     pygame.quit()
 
 

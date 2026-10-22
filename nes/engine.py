@@ -97,6 +97,7 @@ class Observation:
     score: int
     placements: int
     frames: int
+    start_level: int=0
 
 
 def gravity_frames(level):
@@ -238,7 +239,7 @@ class Game:
         board=self.board.copy()
         board.flags.writeable=False
         return Observation(board,self.control,TYPE[self.next_orientation],self.phase,
-                           self.level,self.lines,self.score,self.placements,self.frames)
+                           self.level,self.lines,self.score,self.placements,self.frames,self.rules.start_level)
 
     def _dirty(self):
         self.vram_row=min(self.vram_row,max(0,self.control.y-2))

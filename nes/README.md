@@ -26,7 +26,11 @@ Equivalent Python commands:
 Human controls: arrows move/soft drop, X is A (clockwise), Z is B
 (counterclockwise), P pauses, R restarts, N advances the seed, B toggles the
 untrained probe, Esc quits. The display shows score, lines, level and current
-gravity. No ROM, hold, hard drop or trained NES model is included.
+gravity. No ROM, hold or hard drop is included. An experimental NES-specific
+learned policy is available separately; see [TRAINING.md](TRAINING.md).
+
+Watch it with `.\play-nes.ps1 -Checkpoint models/nes-seed0-best.pt -StartLevel 18`
+after installing the full CPU dependencies with setup.ps1.
 
 Run a small probe suite (choose a new output folder each time):
 
@@ -64,7 +68,7 @@ It does not certify the complete frame scheduler, ROM, PPU or late-game behavior
 1. Compare complete input traces with the original game in an emulator when
    available, especially startup/spawn, top-boundary behavior and frame timing.
 2. Add timed reachable-action planning and freeze the controller/latency limits.
-3. Connect the candidate-board learner with NES observations and retrain.
+3. Broaden NES-specific learner training across seeds and investigate regressions.
 4. Measure consistent level-19/29 reach rates, score, lines, and regressions on
    reserved starts across independent training seeds.
 
