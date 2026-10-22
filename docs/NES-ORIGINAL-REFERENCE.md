@@ -105,6 +105,23 @@ two-proof nes-py test took110.0seconds serially and55.3seconds with two workers
 The live frozen trainer still verifies episodes synchronously; changing its
 thread limit does not parallelize a single emulator.
 
+`nes_original.compare` additionally supports `--workers 2 --worker-cpu-masks 1 256`
+to play independent evaluation games concurrently, including their mandatory
+fresh-core proof checks. Default remains serial. Policies/configuration and CPU
+assignments are frozen before the first game; each worker writes into its own
+directory and records actual runtime latency. Logical-timing tests compare the
+complete serial and parallel input/RAM/RGB proofs. This mode does not change the
+live trainer or assume that charged runtime always produces identical piece
+sequences. Standardize the same worker configuration for every compared policy.
+Use `--fixed-reaction` for a separately declared logical-timing diagnostic that
+ignores host scheduling delays; default still charges those delays. Do not
+combine the two conditions or use diagnostic timing as runtime acceptance.
+
+Local background training pauses during laptop sleep/Modern Standby. Leave the
+computer awake while a job is expected to progress; a stale JSON `running` flag
+is not evidence of a live process. The app's one-time wakeup does not replace
+that requirement or resume a stopped game automatically.
+
 No legal uninterrupted255->0 game or late-game crash matrix has been validated.
 Level235 lasts810lines, and the next-cycle schedule differs. Raw lines wrap at
 25600; use `MarathonProgress` at settled boundaries before adding long-run
