@@ -27,7 +27,7 @@ def main():
     parser.add_argument('--emulator-cpu-mask', type=lambda value: int(value, 0), default=128)
     parser.add_argument('--process-timeout', type=int, default=21600)
     parser.add_argument('--policy', type=Path)
-    parser.add_argument('--selector', choices=('retained-prior', 'dellacherie'), default='retained-prior')
+    parser.add_argument('--selector', choices=('retained-prior', 'dellacherie', 'risk-aware'), default='retained-prior')
     args = parser.parse_args()
     if not 19 <= args.target_level <= 255 or args.max_frames < 1:
         parser.error('Use target level19..255 and a positive gameplay frame budget')
@@ -52,6 +52,9 @@ def main():
     if args.selector == 'dellacherie':
         from nes_original.dellacherie import Dellacherie
         selector = Dellacherie()
+    elif args.selector == 'risk-aware':
+        from nes_original.robust import RiskAwareNextPiece
+        selector = RiskAwareNextPiece()
     config = Config(prior='lookahead', tap_period=2, threads=1)
     if args.policy:
         model, _ = load_policy(args.policy)
@@ -67,7 +70,9 @@ def main():
     protocol = dict(started_utc=datetime.now(timezone.utc).isoformat(),
         start_level=18, target_level=args.target_level, menu_waits=args.seeds,
         max_frames_per_game=args.max_frames, source_files=source_hashes,
-        runtime_latency_charged=True, config=asdict(config), selector=args.selector, planner_cpu_mask=args.cpu_mask,
+        runtime_latency_charged=True, config=asdict(config), selector=args.selector,
+        selector_parameters=selector.stats() if selector and hasattr(selector, 'stats') else None,
+        planner_cpu_mask=args.cpu_mask,
         emulator_cpu_mask=args.emulator_cpu_mask, process_timeout_seconds=args.process_timeout,
         policy=str(args.policy.resolve()) if args.policy else None,
         policy_sha256=hashlib.sha256(args.policy.read_bytes()).hexdigest() if args.policy else None,
@@ -157,7 +162,8 @@ def main():
                         max_frames=args.max_frames, target_level=args.target_level, game_factory=factory,
                         context_selector=selector)
         attained = any(row['success'] and row['exact_ram_rgb_replay'] for row in rows)
-        status('complete', results=rows, target_verified=attained)
+        status('complete', results=rows, target_verified=attained,
+               selector_statistics=selector.stats() if selector and hasattr(selector, 'stats') else None)
         print(json.dumps(dict(target_verified=attained, results=rows)), flush=True)
     except BaseException as error:
         status('failed', error=repr(error))
