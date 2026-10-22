@@ -1,0 +1,23 @@
+{
+  "scope": "Extracted portable checkpoint, source and full trainer restore smoke only; not further performance training",
+  "results": [
+    {
+      "checkpoint": "nes-seed0-selected.pt",
+      "loaded_decisions": 15000,
+      "next_decision": 15001,
+      "exact_continuation": true,
+      "replay_entries": 5000,
+      "next_state_sha256": "92acdb0af64e4a22f9d80b282f606c5ccb1feda3d91732365a2f84c5a5bc64d5",
+      "next_weights_sha256": "d3ed6931a6dde64ac6178291f1016973af356c336082b02a6296253625801ee8"
+    },
+    {
+      "checkpoint": "nes-seed0-50000.pt",
+      "loaded_decisions": 50000,
+      "next_decision": 50001,
+      "exact_continuation": true,
+      "replay_entries": 5000,
+      "next_state_sha256": "265deb78b40a2f21b94a68dc70271426b1e72cbac016ef4bba6c87404abdb192",
+      "next_weights_sha256": "95c895f292c7eaefe6ea7549e2bcc94de435a9ed46aa5fcc51c741d8e0f85de7"
+    }
+  ]
+}
