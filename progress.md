@@ -2,11 +2,11 @@
 
 Goal: Preserve the completed modern checkpoint and start a Nintendo NTSC NES A-Type implementation on a separate branch. First deliverable: documented, tested NES mechanics and an offline playable engine, then connect/retrain the learner after validating the rules.
 
-Status: NES first engine milestone implemented and tested; full NES project remains unfinished.
+Status: First NES engine milestone delivered and published on nes/ntsc-a-type. The overall NES project remains unfinished.
 
 Verified results: 76 tests pass (33 existing and 43 NES cases). Independent py65 checks matched 19 orientation geometries, rotation/spawn/gravity tables, 3,000 piece selections and 3,000 active control states against SHA-256-pinned reference routines. All 12 corrected-engine development games replayed exactly. These are untrained heuristic probes with uncharged planning latency, not original-ROM or learned-policy results. Modern checkpoint and its prior verified outcomes remain preserved.
 
-Active work: Preparing the playable NES engine snapshot, demo and restore check. No NES training is running. Andre has no ROM/emulator yet; source-level verification continues without one.
+Active work: No experiment is running. NES engine/playback, source-level validation, 12 development replays, standalone archive restore and publication checks completed. No NES RL policy has been trained.
 
 Next step: Validate whole-game ROM traces when available; add timed reachable-action planning and a frozen latency/input protocol, then connect and retrain the learner. Level-19/29 success rates and score across reserved starts remain the intended NES benchmarks.
 
@@ -162,3 +162,5 @@ Next step: Validate whole-game ROM traces when available; add timed reachable-ac
 
 - 2026-10-21: Corrected NES engine passed all 76 tests. Optional source validator assembled selected pinned routines in memory under py65 1.2.0: all 19 shapes plus rotation/spawn/gravity tables, 3,000 randomizer draws, and 3,000 randomized active-control states matched. Pinned main.asm SHA-256 is 7dde9fb41caf2d93f6bd8d951eae5cd8d2c2ab916c926751ef4fba21ca26719f. No game ROM was built or downloaded; reference source and CPU dependency are scratch-only. Whole-ROM/frame scheduler/top-boundary/PPU/audio/late-game parity remains unverified.
 - 2026-10-21: Corrected development probes (three seeds each at starting levels 0/9/18/19) all ended naturally and replayed exactly. Level-18 line counts: 83/132/30; level-19: 6/5/11. These are small engine probes from an untrained geometric heuristic, with planning latency recorded but not charged, and supersede first-draft J-table results. Raw v1/v2 traces remain preserved. One level-0 probe reached level 19. Saved a 30-second replay-verified H.264 probe demo and visually checked its board/stats. Added minimal NES-only setup/play scripts, pinned dependencies, plain-JSON resume, rules/fidelity docs and a standalone snapshot packager. Dependency dry-run and PowerShell parsing passed; no cloud resources used.
+
+- 2026-10-21: First NES engine milestone saved as commit 3c1e76e0c303cd3558d762cd7670192860e36546 and pushed to nes/ntsc-a-type. Independent remote-ref check verified that commit and confirmed modern checkpoint tag still resolves to 445813a. Standalone NES-Tetris-Engine-v0.1.zip: 725,598 bytes, SHA-256 ff64d19446d4a86152d799e884437f120cc0d775ecdef24d1fe583763dc2be2e, all 56 content hashes and CRCs verified. Extracted snapshot passed all 43 NES tests without importing PyTorch; a separate 12-frame headless render/input replay smoke also passed (development smoke only). Full checkout suite had 76 passes. Plain-JSON saves, replay/evidence, rules/fidelity docs, demo and minimal setup included; no ROM or trained NES policy included. Local launch helper is outputs/Play-NES.ps1; user can watch outputs/nes-engine-demo.mp4. Overall project is not marked finished: ROM parity, timed reachable planning, retraining and reserved NES benchmarks remain.
