@@ -1,0 +1,2 @@
+# Replay identity pins the exact bridge bytes; Windows checkouts must keep LF.
+nes_original/mesen_bridge.lua text eol=lf
