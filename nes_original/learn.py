@@ -11,12 +11,13 @@ import numpy as np
 import torch
 from torch import nn
 
-from nes.actions import structural
+from nes.actions import ActionRules,structural
 from nes_original.env import OriginalGame, ROM_SHA256
 from nes_original.planner import proposals
 from nes_original.feedback import FeedbackController
 
-KIND = 'original-ntsc-a-feedback-double-dqn-v2'
+LEGACY_KIND = 'original-ntsc-a-feedback-double-dqn-v2'
+KIND = 'original-ntsc-a-feedback-double-dqn-v3'
 VALIDATION_SEEDS = (1001,1013)
 
 
@@ -43,22 +44,41 @@ class Config:
     epsilon_final: float = 0.01
     epsilon_steps: int = 10000
     threads: int = 2
+    tap_period: int = 0
+    prior: str = 'heuristic'
+    exploration_top_k: int = 0
 
     def __post_init__(self):
         if self.capacity < max(self.batch_size,self.learning_starts) or min(
                 self.batch_size,self.train_every,self.target_every,self.epsilon_steps,self.threads) < 1:
             raise ValueError('Invalid replay/update settings')
+        ActionRules(horizontal_period=self.tap_period)
+        if self.prior not in ('heuristic','lookahead') or self.exploration_top_k<0:
+            raise ValueError('Invalid prior/exploration mode')
 
 
-def features(plan):
+def features(plan,prior_values=None):
     # Full predicted board + visible context + fixed heuristic prior. These
     # describe proposals; the reward and next state always come from original code.
     targets = np.zeros((len(plan.paths),20),dtype=np.float32)
     for i,state in enumerate(plan.actions.controls):
         targets[i,0] = state.x/9
         targets[i,1+state.orientation] = 1
+    prior=plan.actions.heuristic if prior_values is None else prior_values
     return np.column_stack((plan.actions.features,targets,
-        np.clip(plan.actions.heuristic/10,-10,2))).astype(np.float32)
+        np.clip(prior/10,-10,2))).astype(np.float32)
+
+
+class FeatureEncoder:
+    def __init__(self,config):
+        self.lookahead=None
+        if config.prior=='lookahead':
+            from nes_original.lookahead import NextPiece
+            self.lookahead=NextPiece(34,config.tap_period,jit=True)
+
+    def __call__(self,obs,plan):
+        prior=self.lookahead.action_values(obs,plan) if self.lookahead else None
+        return features(plan,prior)
 
 
 class Network(nn.Module):
@@ -92,9 +112,9 @@ def reward(before, after, gamma=0.99):
     return float(raw + (0 if after.over or won else gamma*potential(after.board))-potential(before.board))
 
 
-def execute(game, plan, selected):
+def execute(game, plan, selected, *, tap_period=0):
     """Native target feedback, not an assertion of exact predicted afterstates."""
-    controller = FeedbackController(fixed_reaction=True)
+    controller = FeedbackController(fixed_reaction=True,tap_period=tap_period)
     controller.start_plan(game.observe(),plan,selected)
     for _ in range(600):
         before = game.observe()
@@ -108,6 +128,8 @@ def execute(game, plan, selected):
 class Trainer:
     def __init__(self, config):
         self.config = config
+        self.rules=ActionRules(horizontal_period=config.tap_period)
+        self.encoder=FeatureEncoder(config)
         torch.set_num_threads(config.threads)
         torch.manual_seed(config.seed)
         self.rng = np.random.default_rng(config.seed)
@@ -120,18 +142,19 @@ class Trainer:
                                                'board_audit_failures','top_boundary_locks','piece_type_differences')}
         self.loss = None
         self.reset_game()
-        self.dim = features(self.plan).shape[1]
+        self.dim = self.encoder(self.game.observe(),self.plan).shape[1]
         self.online,self.target = Network(self.dim),Network(self.dim)
+        self.online.feature_config=config
         self.target.load_state_dict(self.online.state_dict())
         self.optimizer = torch.optim.Adam(self.online.parameters(),lr=config.learning_rate)
 
     def reset_game(self):
         self.game.reset(start_level=18,seed=int(self.rng.integers(0,512)))
-        self.plan = proposals(self.game.observe(),board_input=True)
+        self.plan = proposals(self.game.observe(),self.rules,board_input=True)
         self.episode_decisions = 0
 
     def execute(self,plan,selected):
-        after,stats = execute(self.game,plan,selected)
+        after,stats = execute(self.game,plan,selected,tap_period=self.config.tap_period)
         for key in self.audit_totals:
             self.audit_totals[key] += stats[key]
         return after,stats
@@ -149,7 +172,7 @@ class Trainer:
                 self.finish_episode(replay_dir)
                 self.reset_game()
             else:
-                self.plan = proposals(after,board_input=True)
+                self.plan = proposals(after,self.rules,board_input=True)
         raise RuntimeError('Repeated forced-lock states')
 
     def finish_episode(self,replay_dir=None):
@@ -167,30 +190,31 @@ class Trainer:
     def advance(self, *, replay_dir=None):
         self.ready(replay_dir)
         c = self.config
-        x = features(self.plan)
+        x = self.encoder(self.game.observe(),self.plan)
         epsilon = c.epsilon_start+min(1,self.step/c.epsilon_steps)*(c.epsilon_final-c.epsilon_start)
         if self.step < c.teacher_decisions:
             selected = int(x[:,-1].argmax())
         elif self.rng.random() < epsilon:
-            selected = int(self.rng.integers(len(x)))
+            pool=np.argsort(-x[:,-1],kind='stable')[:c.exploration_top_k] if c.exploration_top_k else np.arange(len(x))
+            selected = int(self.rng.choice(pool))
         else:
             selected = int(values(self.online,x).argmax())
         before = self.game.observe()
         after,stats = self.execute(self.plan,selected)
         self.episode_decisions += 1
-        self.plan = None if after.over else proposals(after,board_input=True)
+        self.plan = None if after.over else proposals(after,self.rules,board_input=True)
         # Resolve forced states in the same real transition until a new genuine
         # choice exists; reward uses the resulting actual counters and board.
         for _ in range(10):
             if after.over or self.plan is not None:
                 break
             after,_ = self.execute(None,0)
-            self.plan = None if after.over else proposals(after,board_input=True)
+            self.plan = None if after.over else proposals(after,self.rules,board_input=True)
         else:
             raise RuntimeError('Forced-state continuation exceeded bound')
         self.placements += after.placements-before.placements
         done = after.over or after.level >= 30
-        next_x = np.empty((0,self.dim),dtype=np.float16) if done else features(self.plan).astype(np.float16)
+        next_x = np.empty((0,self.dim),dtype=np.float16) if done else self.encoder(after,self.plan).astype(np.float16)
         item = (x[selected].astype(np.float16),reward(before,after,c.gamma),next_x,done)
         if len(self.replay) < c.capacity:
             self.replay.append(item)
@@ -250,7 +274,7 @@ class Trainer:
     @classmethod
     def load(cls,path):
         data = torch.load(path,map_location='cpu',weights_only=False)
-        if data['kind'] != KIND or data['rom_sha256'] != ROM_SHA256:
+        if data['kind'] not in (KIND,LEGACY_KIND) or data['rom_sha256'] != ROM_SHA256:
             raise ValueError('Not an original-game training checkpoint')
         if data.get('torch_version',str(torch.__version__)) != str(torch.__version__):
             raise ValueError('Use the recorded PyTorch version for exact trainer resume')
@@ -261,7 +285,7 @@ class Trainer:
             setattr(obj,name,data[name])
         obj.game.load_replay(data['game'])
         obj.audit_totals = data.get('audit_totals',obj.audit_totals)
-        obj.plan = proposals(obj.game.observe(),board_input=True)
+        obj.plan = proposals(obj.game.observe(),obj.rules,board_input=True)
         obj.rng.bit_generator.state = data['rng']
         torch.set_rng_state(data['torch_rng'])
         return obj
@@ -276,25 +300,29 @@ class Trainer:
 
 def load_policy(path):
     data = torch.load(path,map_location='cpu',weights_only=True)
-    if data['kind'] != KIND or data['rom_sha256'] != ROM_SHA256:
+    if data['kind'] not in (KIND,LEGACY_KIND) or data['rom_sha256'] != ROM_SHA256:
         raise ValueError('Expected an original-game policy')
     torch.set_num_threads(data['config']['threads'])
     model = Network(data['dim'])
+    model.feature_config=Config(**data['config'])
     model.load_state_dict(data['online'])
     model.eval()
+    values(model,np.zeros((34,data['dim']),dtype=np.float32))
     return model,data
 
 
-def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000):
+def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None):
+    config=config or getattr(model,'feature_config',None) or Config()
+    encoder=FeatureEncoder(config)
     rows = []
     for seed in seeds:
-        controller = FeedbackController(fixed_reaction=not runtime,
-            selector=(lambda plan: values(model,features(plan)).argmax()) if model else
-                     (lambda plan: features(plan)[:,-1].argmax()))
+        controller = FeedbackController(fixed_reaction=not runtime,tap_period=config.tap_period,
+            context_selector=(lambda obs,plan: values(model,encoder(obs,plan)).argmax()) if model else
+                     (lambda obs,plan: encoder(obs,plan)[:,-1].argmax()))
         with OriginalGame() as game:
             o = game.reset(start_level=18,seed=int(seed))
             error = None
-            while not o.over and o.level < 30 and o.frames < max_frames:
+            while not o.over and (o.level < 30 or controller.stage is not None) and o.frames < max_frames:
                 before = o
                 try:
                     o = game.step(controller.command(o))
@@ -346,11 +374,18 @@ def main():
     p.add_argument('--steps',type=int,default=10000)
     p.add_argument('--check-every',type=int,default=2500)
     p.add_argument('--resume',type=Path)
+    p.add_argument('--prior',choices=['heuristic','lookahead'],default='heuristic')
+    p.add_argument('--tap-period',type=int,default=0)
+    p.add_argument('--jit-deps',type=Path)
+    p.add_argument('--cpu-mask',type=int,default=160)
     args = p.parse_args()
+    if args.jit_deps:
+        import sys
+        sys.path.insert(0,str(args.jit_deps.resolve()))
     if args.output.exists() and any(args.output.iterdir()) and not args.resume:
         p.error('Output is not empty; use a new directory or explicitly resume a checkpoint')
     args.output.mkdir(parents=True,exist_ok=True)
-    mask = cpu_limits()
+    mask = cpu_limits(args.cpu_mask)
     lock = args.output/'RUNNING.lock'
     try:
         descriptor = os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY)
@@ -370,6 +405,9 @@ def main():
             wall_seconds=time.perf_counter()-started,cpu_seconds=time.process_time(),
             affinity_mask=mask,priority='BelowNormal',threads=2,job=str(args.output),
             seed=current.config.seed if current else None,decisions=current.step if current else 0,
+            prior=current.config.prior if current else args.prior,
+            horizontal_pulse_period=current.config.tap_period if current else args.tap_period,
+            teacher_decisions=min(current.step,current.config.teacher_decisions) if current else 0,
             updates=current.updates if current else 0,loss=current.loss if current else None,
             action_audits=current.audit_totals if current else {},
             total_decisions=sum(row['decisions'] for row in finished)+(current.step if current else 0),
@@ -387,26 +425,38 @@ def main():
     write_json(protocol_path,dict(kind=KIND,rom_sha256=ROM_SHA256,
         training_seeds=args.seeds,steps_per_seed=args.steps,training_menu_wait_range=[0,511],
         validation_menu_wait_seeds=VALIDATION_SEEDS,starting_level=18,target_level=30,
-        teacher_rollout_decisions=256,training_timing='Fixed logical reaction, actual original-game transitions',
+        teacher_rollout_decisions=1024 if args.prior=='lookahead' else 256,
+        prior=args.prior,horizontal_pulse_period=args.tap_period,
+        learning_starts=1024 if args.prior=='lookahead' else 128,
+        exploration_top_k=4 if args.prior=='lookahead' else 0,
+        epsilon_start=.01 if args.prior=='lookahead' else .05,
+        epsilon_final=.002 if args.prior=='lookahead' else .01,
+        training_timing='Fixed logical reaction, actual original-game transitions',
         validation_timing='Fixed logical reaction; selected policy additionally tested with charged runtime latency',
         selected_by='Validation successes then median lines then mean score; no reserved starts used',
         reward='0.02 + 0.1*lines^2 + score_delta/100000 - 5*death + 5*complete_level29 + gamma*Phi(next)-Phi(before)',
         potential='-0.02*sum_heights -0.25*holes -0.02*bumpiness; zero at terminal',
-        method='Approximate full predicted-board/context + target-pose features; clipped heuristic prior + zero-initial residual Double DQN; actual native feedback next-state/reward',
-        action_interface='3 reaction frames; 48 navigation frames; horizontal changes no faster than 6frames; rotation pulses 4frames; Down to observed lock; consecutive stable spawn orientations before next choice',
+        method='Approximate board/context + target-pose features; configured fixed prior + zero-initial residual Double DQN; actual native feedback next-state/reward',
+        action_interface='3 reaction; 48 navigation; configured held-DAS or horizontal pulse period; 4frame rotations; Down to observed lock; stable spawn before next choice',
         limitations='Experimental. Strict preview audit retained separately. Native target misses/prediction differences logged; actual board conservation and exact episode replay audited. No assumed gain.',
         reserved_acceptance='Not run; freeze final protocol before 20 untouched starts'))
     try:
         for seed in args.seeds:
             folder = args.output/f'seed{seed}'
             folder.mkdir(exist_ok=True)
-            current = Trainer.load(args.resume) if args.resume else Trainer(Config(seed=seed))
+            config=Config(seed=seed,tap_period=args.tap_period,prior=args.prior,
+                teacher_decisions=1024 if args.prior=='lookahead' else 256,
+                learning_starts=1024 if args.prior=='lookahead' else 128,
+                epsilon_start=.01 if args.prior=='lookahead' else .05,
+                epsilon_final=.002 if args.prior=='lookahead' else .01,
+                exploration_top_k=4 if args.prior=='lookahead' else 0)
+            current = Trainer.load(args.resume) if args.resume else Trainer(config)
             if current.config.seed != seed:
                 raise ValueError('Resume seed does not match requested seed')
             status('running','initial-validation')
             if not args.resume:
                 current.export(folder/'policy-0.pt')
-                initial = evaluate(None,folder/'baseline')
+                initial = evaluate(None,folder/'baseline',config=current.config)
                 best = rank(initial)
                 current.export(folder/'best.pt')
                 write_json(folder/'selection.json',dict(step=0,rank=best,rows=initial))
@@ -426,7 +476,7 @@ def main():
                             stream.write(json.dumps(row)+'\n')
                     last_history = len(current.history)
                 if current.step%25 == 0:
-                    status('running','teacher-rollout' if current.step<=256 else 'reinforcement-learning')
+                    status('running','teacher-rollout' if current.step<=current.config.teacher_decisions else 'reinforcement-learning')
                 if current.step%500 == 0:
                     current.save(folder/'latest.pt')
                 if current.step%args.check_every == 0 or current.step == args.steps:

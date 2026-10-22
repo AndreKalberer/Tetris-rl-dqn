@@ -15,10 +15,13 @@ class ActionRules:
     reaction_frames: int=3
     navigation_frames: int=48
     rotation_period: int=4
+    horizontal_period: int=0  # 0=held DAS; >=2=press/release pulse period.
 
     def __post_init__(self):
         if self.reaction_frames<0 or self.navigation_frames<1 or self.rotation_period<2:
             raise ValueError('Invalid timed action profile')
+        if self.horizontal_period and self.horizontal_period<2:
+            raise ValueError('Horizontal pulse period must be zero or at least two')
 
 
 @dataclass
@@ -96,12 +99,15 @@ def enumerate_actions(observation,rules=ActionRules(),*,board_input=False):
                     buttons=int(Buttons.DOWN)
                 else:
                     horizontal=int(Buttons.LEFT if state.x>target_x else Buttons.RIGHT if state.x<target_x else 0)
+                    moving = bool(horizontal)
+                    if rules.horizontal_period and elapsed%rules.horizontal_period:
+                        horizontal=0
                     if state.orientation!=target:
                         rotation=rotate_button(state.orientation,target)
                         pulse=rotation if elapsed%rules.rotation_period==0 and not state.previous & rotation else 0
                         buttons=horizontal|pulse
                     else:
-                        buttons=horizontal or int(Buttons.DOWN)
+                        buttons=horizontal if moving else int(Buttons.DOWN)
                 key=state,buttons
                 if key not in transitions:
                     transitions[key]=control_frame(board,state,buttons,observation.level)

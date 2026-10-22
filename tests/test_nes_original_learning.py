@@ -10,6 +10,36 @@ import numpy as np
 @unittest.skipUnless(importlib.util.find_spec('nes_py') and importlib.util.find_spec('torch'),
                      'Requires isolated original-game learning environment')
 class OriginalLearningTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec('numba'),'Optional compiled lookahead prior')
+    def test_rapid_lookahead_training_resumes_exactly(self):
+        import torch
+        from nes_original.learn import Config,Trainer
+        c=Config(seed=4,capacity=32,batch_size=4,learning_starts=4,teacher_decisions=2,
+                 train_every=1,target_every=3,tap_period=2,prior='lookahead',exploration_top_k=4)
+        a=Trainer(c)
+        b=None
+        try:
+            for _ in range(6):a.advance()
+            base=Path.cwd()/'.pytest-work/original-lookahead-learning'
+            base.mkdir(parents=True,exist_ok=True)
+            with tempfile.TemporaryDirectory(dir=base) as temp:
+                checkpoint=Path(temp)/'resume.pt'
+                a.save(checkpoint)
+                for _ in range(3):a.advance()
+                expected=a.game.replay()
+                weights=[p.detach().clone() for p in a.online.parameters()]
+                b=Trainer.load(checkpoint)
+                for _ in range(3):b.advance()
+                self.assertEqual(expected,b.game.replay())
+                self.assertEqual((a.step,a.updates,a.loss),(b.step,b.updates,b.loss))
+                self.assertTrue(all(torch.equal(x,y) for x,y in zip(weights,b.online.parameters())))
+                self.assertEqual(b.config.prior,'lookahead')
+                self.assertEqual(b.config.tap_period,2)
+                self.assertEqual(b.audit_totals['board_audit_failures'],0)
+        finally:
+            a.close()
+            if b:b.close()
+
     def test_cross_piece_rotation_is_rejected_instead_of_spinning_forever(self):
         from nes.actions import rotate_button
         with self.assertRaises(ValueError):

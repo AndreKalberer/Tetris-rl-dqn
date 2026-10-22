@@ -1,0 +1,71 @@
+{
+  "scope": "Self-authored synthetic CPU diagnostic, NOT Tetris gameplay or a legal-game score",
+  "installed_nes_py": "9.0.1",
+  "probe": "JAM opcode$02 must make post-opcode writes unreachable",
+  "results": [
+    {
+      "kind": "jmp_self",
+      "rom_sha256": "2395804fd5ac9662ed6cdf1bf9c48f711975b1fc8bacad40c5259f7281303948",
+      "native_steps": [
+        {
+          "before_marker": 165,
+          "after_marker": 0,
+          "counter": 0
+        },
+        {
+          "before_marker": 165,
+          "after_marker": 0,
+          "counter": 0
+        },
+        {
+          "before_marker": 165,
+          "after_marker": 0,
+          "counter": 0
+        }
+      ]
+    },
+    {
+      "kind": "nop",
+      "rom_sha256": "99177afb708b2b852699bb564465a36e3d8dfbadd7a6200dfcc3939cc9da9ed5",
+      "native_steps": [
+        {
+          "before_marker": 165,
+          "after_marker": 90,
+          "counter": 134
+        },
+        {
+          "before_marker": 165,
+          "after_marker": 90,
+          "counter": 17
+        },
+        {
+          "before_marker": 165,
+          "after_marker": 90,
+          "counter": 155
+        }
+      ]
+    },
+    {
+      "kind": "jam02",
+      "rom_sha256": "1e5f81cf5606c991a3761c19931a35b565e1c13c9b268548589df1469ec2040d",
+      "native_steps": [
+        {
+          "before_marker": 165,
+          "after_marker": 90,
+          "counter": 134
+        },
+        {
+          "before_marker": 165,
+          "after_marker": 90,
+          "counter": 17
+        },
+        {
+          "before_marker": 165,
+          "after_marker": 90,
+          "counter": 156
+        }
+      ]
+    }
+  ],
+  "jam_post_marker_executed": true
+}

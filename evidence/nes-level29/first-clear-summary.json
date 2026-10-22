@@ -1,0 +1,68 @@
+{
+  "scope": "One original-game development success, not RL gain/reliability acceptance",
+  "milestone": "Start18; clear29 and reach30",
+  "original_result": {
+    "level": 30,
+    "lines": 240,
+    "score": 230640,
+    "placements": 602,
+    "frames": 33148,
+    "over": false
+  },
+  "settled_result": {
+    "level": 30,
+    "lines": 240,
+    "score": 230640,
+    "placements": 602,
+    "frames": 33154,
+    "over": false
+  },
+  "exact_ram_rgb_replay": true,
+  "settle_idle_frames": 6,
+  "score_target_500000_met": false,
+  "source_result": {
+    "seed": 17,
+    "policy": "visible-next-piece beam",
+    "beam": 34,
+    "level": 30,
+    "lines": 240,
+    "score": 230640,
+    "placements": 602,
+    "frames": 33148,
+    "success": true,
+    "over": false,
+    "error": null,
+    "censored": false,
+    "wall_seconds": 86.21574229998805,
+    "exact_ram_rgb_replay": true,
+    "controller": {
+      "plans": 604,
+      "planning_seconds": 4.827162700166809,
+      "planning_overruns": 2,
+      "extra_idle_frames": 35,
+      "runtime_latency_charged": true,
+      "target_misses": 0,
+      "proposal_board_differences": 0,
+      "board_audit_failures": 0,
+      "top_boundary_locks": 0,
+      "piece_type_differences": 0,
+      "action_interface": "Native feedback targets; approximate proposal features",
+      "reaction_frames": 3,
+      "navigation_frames": 48,
+      "horizontal_change_period": 1,
+      "horizontal_pulse_period": 2,
+      "rotation_period": 4
+    },
+    "lookahead": {
+      "beam": 34,
+      "compiled": true,
+      "calls": 604,
+      "expanded_boards": 13700,
+      "selector_p50_ms": 0.8307499956572428,
+      "selector_p95_ms": 1.6595599976426456,
+      "selector_max_ms": 481.54879998764955,
+      "information": "Current board/piece and single visible next piece only; unknown next-next never queried"
+    },
+    "scope": "Original-game development comparison; not reserved acceptance or RL result"
+  }
+}

@@ -8,15 +8,18 @@ import time
 
 import numpy as np
 
-from nes.actions import rotate_button
+from nes.actions import ActionRules,rotate_button
 from nes.engine import CELLS,FPS,TYPE
 from nes_original.env import Buttons,from_game_bits
 from nes_original.planner import proposals
 
 
 class FeedbackController:
-    def __init__(self, *, fixed_reaction=False, selector=None):
+    def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0):
         self.fixed_reaction,self.selector = fixed_reaction,selector
+        self.context_selector = context_selector
+        self.tap_period = tap_period
+        self.rules = ActionRules(horizontal_period=tap_period)
         self.stage = None
         self.idle = 0
         self.plans = self.overruns = self.extra_idle_frames = 0
@@ -48,9 +51,10 @@ class FeedbackController:
             return 0
         if self.stage is None:
             start = time.perf_counter()
-            plan = proposals(obs,board_input=True)
-            selected = int(self.selector(plan)) if plan and self.selector else (
-                int(plan.actions.heuristic.argmax()) if plan else 0)
+            plan = proposals(obs,self.rules,board_input=True)
+            selected = (int(self.context_selector(obs,plan)) if plan and self.context_selector else
+                        int(self.selector(plan)) if plan and self.selector else
+                        int(plan.actions.heuristic.argmax()) if plan else 0)
             elapsed = time.perf_counter()-start
             self.plans += 1
             self.planning_seconds += elapsed
@@ -75,7 +79,11 @@ class FeedbackController:
         # Horizontal changes at most once every six native frames. Rotation
         # pulses at most once every four. Own pending input must settle before
         # treating a target as reached. All remaining physics are original code.
-        if navigation%6 == 0:
+        if self.tap_period:
+            self.horizontal = (int(Buttons.LEFT if obs.x>self.target_x else
+                                   Buttons.RIGHT if obs.x<self.target_x else 0)
+                               if navigation%self.tap_period == 0 else 0)
+        elif navigation%6 == 0:
             self.horizontal = int(Buttons.LEFT if obs.x>self.target_x else
                                   Buttons.RIGHT if obs.x<self.target_x else 0)
         rotation = 0
@@ -134,4 +142,5 @@ class FeedbackController:
             board_audit_failures=self.board_audit_failures,top_boundary_locks=self.top_boundary_locks,
             piece_type_differences=self.piece_type_differences,
             action_interface='Native feedback targets; approximate proposal features',
-            reaction_frames=3,navigation_frames=48,horizontal_change_period=6,rotation_period=4)
+            reaction_frames=3,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
+            horizontal_pulse_period=self.tap_period,rotation_period=4)

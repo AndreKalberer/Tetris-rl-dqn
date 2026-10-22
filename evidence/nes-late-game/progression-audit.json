@@ -1,0 +1,158 @@
+{
+  "scope": "1000 source-level py65 arithmetic comparisons; NOT a legal game or whole-emulator parity result",
+  "source_revision": "94581c0306fa0009fe11fde48222875549d15b8b",
+  "source_sha256": "7dde9fb41caf2d93f6bd8d951eae5cd8d2c2ab916c926751ef4fba21ca26719f",
+  "compared_cases": 1000,
+  "all_matched": true,
+  "rebirth_absolute_line_counts": [
+    3300,
+    6660,
+    10020,
+    13380,
+    16740,
+    20900,
+    24260
+  ],
+  "long_levels": [
+    {
+      "level": 18,
+      "started": 0,
+      "ended": 130,
+      "lines": 130
+    },
+    {
+      "level": 235,
+      "started": 2290,
+      "ended": 3100,
+      "lines": 810
+    },
+    {
+      "level": 189,
+      "started": 5190,
+      "ended": 6000,
+      "lines": 810
+    },
+    {
+      "level": 143,
+      "started": 8090,
+      "ended": 8900,
+      "lines": 810
+    },
+    {
+      "level": 107,
+      "started": 11090,
+      "ended": 11900,
+      "lines": 810
+    },
+    {
+      "level": 61,
+      "started": 13990,
+      "ended": 14800,
+      "lines": 810
+    },
+    {
+      "level": 15,
+      "started": 16890,
+      "ended": 17700,
+      "lines": 810
+    },
+    {
+      "level": 235,
+      "started": 19890,
+      "ended": 20700,
+      "lines": 810
+    },
+    {
+      "level": 189,
+      "started": 22790,
+      "ended": 23600,
+      "lines": 810
+    }
+  ],
+  "milestones": [
+    {
+      "absolute_lines": 130,
+      "raw_level": 19,
+      "low_bcd": "30",
+      "high_binary": 1,
+      "raw_lines": 130
+    },
+    {
+      "absolute_lines": 240,
+      "raw_level": 30,
+      "low_bcd": "40",
+      "high_binary": 2,
+      "raw_lines": 240
+    },
+    {
+      "absolute_lines": 2290,
+      "raw_level": 235,
+      "low_bcd": "90",
+      "high_binary": 22,
+      "raw_lines": 2290
+    },
+    {
+      "absolute_lines": 3099,
+      "raw_level": 235,
+      "low_bcd": "99",
+      "high_binary": 30,
+      "raw_lines": 3099
+    },
+    {
+      "absolute_lines": 3100,
+      "raw_level": 236,
+      "low_bcd": "00",
+      "high_binary": 31,
+      "raw_lines": 3100
+    },
+    {
+      "absolute_lines": 3290,
+      "raw_level": 255,
+      "low_bcd": "90",
+      "high_binary": 32,
+      "raw_lines": 3290
+    },
+    {
+      "absolute_lines": 3299,
+      "raw_level": 255,
+      "low_bcd": "99",
+      "high_binary": 32,
+      "raw_lines": 3299
+    },
+    {
+      "absolute_lines": 3300,
+      "raw_level": 0,
+      "low_bcd": "00",
+      "high_binary": 33,
+      "raw_lines": 3300
+    },
+    {
+      "absolute_lines": 3310,
+      "raw_level": 1,
+      "low_bcd": "10",
+      "high_binary": 33,
+      "raw_lines": 3310
+    },
+    {
+      "absolute_lines": 25599,
+      "raw_level": 133,
+      "low_bcd": "99",
+      "high_binary": 255,
+      "raw_lines": 25599
+    },
+    {
+      "absolute_lines": 25600,
+      "raw_level": 134,
+      "low_bcd": "00",
+      "high_binary": 0,
+      "raw_lines": 0
+    },
+    {
+      "absolute_lines": 25601,
+      "raw_level": 134,
+      "low_bcd": "01",
+      "high_binary": 0,
+      "raw_lines": 1
+    }
+  ]
+}

@@ -14,7 +14,10 @@ def main():
     parser.add_argument('replay',type=Path)
     parser.add_argument('--video',type=Path)
     parser.add_argument('--video-frames',type=int,default=1800)
+    parser.add_argument('--video-start-frame',type=int,default=1)
     args = parser.parse_args()
+    if args.video_start_frame<1:
+        parser.error('--video-start-frame must be positive')
     record = json.loads(args.replay.read_text(encoding='utf-8'))
     writer = None
     frames = 0
@@ -32,7 +35,8 @@ def main():
 
     def capture(game):
         nonlocal frames
-        if writer is not None and frames < args.video_frames:
+        if (writer is not None and frames < args.video_frames and
+                len(game.inputs)-game.start_frame >= args.video_start_frame):
             writer.stdin.write(game.screen().tobytes())
             frames += 1
     try:
