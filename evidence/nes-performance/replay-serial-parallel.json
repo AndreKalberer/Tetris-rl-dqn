@@ -1,0 +1,91 @@
+{
+  "scope": "Verification throughput only; not a playing-strength or live-training speed claim",
+  "serial": {
+    "workers": 1,
+    "wall_seconds": 110.00204189999204,
+    "verified": true,
+    "rows": [
+      {
+        "index": 0,
+        "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-091919\\training\\seed0\\selected-runtime-through-10000\\seed-1001.json",
+        "verified": true,
+        "error": null,
+        "backend": "OriginalGame",
+        "result": {
+          "level": 30,
+          "lines": 240,
+          "score": 242002,
+          "placements": 605,
+          "frames": 32694,
+          "over": false
+        },
+        "wall_seconds": 54.555510699996375,
+        "pid": 28772,
+        "cpu_mask": 1
+      },
+      {
+        "index": 1,
+        "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-091919\\training\\seed0\\selected-runtime-through-10000\\seed-1013.json",
+        "verified": true,
+        "error": null,
+        "backend": "OriginalGame",
+        "result": {
+          "level": 30,
+          "lines": 240,
+          "score": 284886,
+          "placements": 601,
+          "frames": 32370,
+          "over": false
+        },
+        "wall_seconds": 53.78634829999646,
+        "pid": 28772,
+        "cpu_mask": 1
+      }
+    ]
+  },
+  "parallel": {
+    "workers": 2,
+    "wall_seconds": 55.31546860000526,
+    "verified": true,
+    "rows": [
+      {
+        "index": 0,
+        "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-091919\\training\\seed0\\selected-runtime-through-10000\\seed-1001.json",
+        "verified": true,
+        "error": null,
+        "backend": "OriginalGame",
+        "result": {
+          "level": 30,
+          "lines": 240,
+          "score": 242002,
+          "placements": 605,
+          "frames": 32694,
+          "over": false
+        },
+        "wall_seconds": 53.12571229999594,
+        "pid": 3276,
+        "cpu_mask": 1
+      },
+      {
+        "index": 1,
+        "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-091919\\training\\seed0\\selected-runtime-through-10000\\seed-1013.json",
+        "verified": true,
+        "error": null,
+        "backend": "OriginalGame",
+        "result": {
+          "level": 30,
+          "lines": 240,
+          "score": 284886,
+          "placements": 601,
+          "frames": 32370,
+          "over": false
+        },
+        "wall_seconds": 52.91545839999162,
+        "pid": 24376,
+        "cpu_mask": 256
+      }
+    ]
+  },
+  "verified": true,
+  "speedup": 1.988630751651656
+}

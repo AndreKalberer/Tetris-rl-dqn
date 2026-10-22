@@ -1,0 +1,16 @@
+{
+  "pid": 1928,
+  "recorded_at": "2026-10-22T13:36:09.8594871-06:00",
+  "before": {
+    "priority": "BelowNormal",
+    "affinity_mask": 160
+  },
+  "actual_priority": "Normal",
+  "actual_affinity_mask": 65515,
+  "torch_threads": 2,
+  "excluded_logical_cpus": [
+    2,
+    4
+  ],
+  "explanation": "User requested faster local compute. Live source/models unchanged; allow scheduler to choose free CPUs with the existing two-thread neural limit. Worker status affinity/priority fields describe launch configuration, not this runtime override."
+}

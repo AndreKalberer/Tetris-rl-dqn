@@ -89,6 +89,22 @@ fallback. Host idle and total-process deadlines kill only the owned child.
 Default bounds are30seconds per host action and onehour per process; choose
 larger explicit bounds for endurance work. This is not whole-hardware certification.
 
+Independent saved proofs can be verified on separate CPU cores:
+
+```powershell
+python -m nes_original.verify_batch first-replay.json second-replay.json --workers 2 --cpu-masks 1 256 --output runs/proof-checks.json
+```
+
+Add `--mesen C:/path/Mesen.exe` for reference journals. Defaults use spare logical
+CPUs0/8 at BelowNormal; adjust the masks on other computers. Workers use distinct
+fresh cores, retain all RAM/RGB/clock checks and fail the report if any proof
+diverges. This does not change or resume a live game. `--benchmark` compares serial
+and parallel verification of the same inputs, including process startup. A local
+two-proof nes-py test took110.0seconds serially and55.3seconds with two workers
+(1.99x). This is verification throughput, not a whole-training or strength gain.
+The live frozen trainer still verifies episodes synchronously; changing its
+thread limit does not parallelize a single emulator.
+
 No legal uninterrupted255->0 game or late-game crash matrix has been validated.
 Level235 lasts810lines, and the next-cycle schedule differs. Raw lines wrap at
 25600; use `MarathonProgress` at settled boundaries before adding long-run

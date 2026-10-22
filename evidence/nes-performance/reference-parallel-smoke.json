@@ -1,0 +1,47 @@
+{
+  "scope": "Verification throughput only; not a playing-strength or live-training speed claim",
+  "parallel": {
+    "workers": 2,
+    "wall_seconds": 11.588793200004147,
+    "verified": true,
+    "rows": [
+      {
+        "index": 0,
+        "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\nes-late-fidelity\\reference-adapter-pipe-smoke-replay.json",
+        "verified": true,
+        "error": null,
+        "backend": "MesenGame",
+        "result": {
+          "level": 18,
+          "lines": 0,
+          "score": 2,
+          "placements": 3,
+          "frames": 181,
+          "over": false
+        },
+        "wall_seconds": 4.720458099996904,
+        "pid": 21540,
+        "cpu_mask": 1
+      },
+      {
+        "index": 1,
+        "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\nes-late-fidelity\\reference-controller-smoke-replay.json",
+        "verified": true,
+        "error": null,
+        "backend": "MesenGame",
+        "result": {
+          "level": 18,
+          "lines": 7,
+          "score": 8930,
+          "placements": 20,
+          "frames": 1128,
+          "over": false
+        },
+        "wall_seconds": 9.583415900007822,
+        "pid": 31756,
+        "cpu_mask": 256
+      }
+    ]
+  },
+  "verified": true
+}

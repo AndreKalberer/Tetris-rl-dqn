@@ -1,0 +1,43 @@
+{
+  "models": [
+    {
+      "seed": 0,
+      "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-091919\\training\\seed0\\best.pt",
+      "sha256": "9cebc8cbb5950c05bd4235ae0ae69a3e45b1e5989231c2f27df009292c3fa3f3",
+      "decisions": 10000,
+      "config": {
+        "seed": 0,
+        "capacity": 3000,
+        "batch_size": 64,
+        "learning_starts": 1024,
+        "teacher_decisions": 1024,
+        "train_every": 4,
+        "target_every": 500,
+        "gamma": 0.99,
+        "learning_rate": 5e-05,
+        "epsilon_start": 0.01,
+        "epsilon_final": 0.002,
+        "epsilon_steps": 10000,
+        "threads": 2,
+        "tap_period": 2,
+        "prior": "lookahead",
+        "exploration_top_k": 4
+      }
+    }
+  ],
+  "test_menu_wait_seeds": [
+    1701,
+    1713
+  ],
+  "starting_level": 18,
+  "target_level": 30,
+  "runtime_latency_charged": true,
+  "selected_only_on_prior_validation": [
+    1001,
+    1013
+  ],
+  "cpu_mask": 3,
+  "backend": "MesenGame",
+  "scope": "Small fresh-start original-game pilot, not20-game acceptance or hardware-fidelity certification",
+  "independence": "Independent training seeds; paired initial starts, timing-dependent later piece sequences"
+}
