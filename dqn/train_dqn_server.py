@@ -30,7 +30,6 @@ if str(_REPO_ROOT) not in sys.path:
 import gymnasium as gym
 
 from stable_baselines3 import DQN
-from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
@@ -44,6 +43,7 @@ except ImportError as e:
     ) from e
 
 from tetris_macro_env import TetrisPlacementEnv
+from dqn.checkpoint_metadata import ExperimentCheckpoint, read_settings, write_metadata
 
 
 ENV_ID_CANDIDATES = [
@@ -96,6 +96,7 @@ def build_env(
     include_hold: bool,
     next_n: int,
     reward_profile: str,
+    invalid_action_mode: str = "legacy_drop",
 ) -> gym.Env:
     base = make_tetris_env(env_id=env_id, render_mode=None)
 
@@ -106,6 +107,7 @@ def build_env(
         next_n=int(next_n),
         reward_profile=str(reward_profile),
         observation_mode=obs_mode,
+        invalid_action_mode=invalid_action_mode,
     )
 
     env = Monitor(env)
@@ -210,6 +212,14 @@ def main() -> None:
     parser.add_argument("--models-dir", type=str, default="models")
     parser.add_argument("--log-dir", type=str, default="logs")
     parser.add_argument("--checkpoint-freq", type=int, default=50_000)
+    parser.add_argument("--buffer-size", type=int, default=500_000)
+    parser.add_argument("--learning-starts", type=int, default=10_000)
+    parser.add_argument("--threads", type=int, default=2)
+    parser.add_argument("--invalid-action-mode", choices=['reject', 'legacy_drop'], default='legacy_drop',
+                        help='Fixed-action DQN retains its historical fallback; candidate agent uses legal actions only')
+    parser.add_argument("--save-replay-buffer", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--allow-legacy-resume", action="store_true",
+                        help="Allow a checkpoint without metadata/replay; corrected environment changes its dynamics")
     parser.add_argument("--name-prefix", type=str, default="dqn_tetris_macro")
     parser.add_argument(
         "--resume-from",
@@ -246,6 +256,21 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
+    import torch
+    torch.set_num_threads(args.threads)
+    settings = dict(obs=args.obs, hold_actions=args.hold_actions, next_n=args.next_n,
+                    reward_profile=args.reward_profile, seed=args.seed,
+                    invalid_action_mode=args.invalid_action_mode)
+    if args.resume_from:
+        saved_settings = read_settings(args.resume_from)
+        if not saved_settings and not args.allow_legacy_resume:
+            parser.error('Checkpoint has no environment metadata. Use --allow-legacy-resume explicitly to warm-start.')
+        if saved_settings:
+            for field in ('obs', 'hold_actions', 'next_n', 'reward_profile', 'invalid_action_mode'):
+                if field not in saved_settings:
+                    parser.error(f'Checkpoint missing required setting: {field}')
+                if saved_settings[field] != settings[field]:
+                    parser.error(f'Checkpoint {field}={saved_settings[field]!r} does not match requested {settings[field]!r}')
 
     models_dir = Path(args.models_dir)
     models_dir.mkdir(parents=True, exist_ok=True)
@@ -262,6 +287,7 @@ def main() -> None:
                 include_hold=args.hold_actions,
                 next_n=args.next_n,
                 reward_profile=args.reward_profile,
+                invalid_action_mode=args.invalid_action_mode,
             )
         ]
     )
@@ -269,16 +295,31 @@ def main() -> None:
     n_envs = int(getattr(train_env, "num_envs", 1))
     save_freq = max(int(args.checkpoint_freq // n_envs), 1)
 
-    checkpoint_callback = CheckpointCallback(
+    checkpoint_callback = ExperimentCheckpoint(
+        settings=settings,
         save_freq=save_freq,
         save_path=str(models_dir),
         name_prefix=args.name_prefix,
-        save_replay_buffer=False,
+        save_replay_buffer=args.save_replay_buffer,
         save_vecnormalize=False,
     )
 
     if args.resume_from:
         model = DQN.load(args.resume_from, env=train_env, device="auto")
+        checkpoint_path = Path(args.resume_from)
+        if checkpoint_path.suffix != '.zip':
+            checkpoint_path = checkpoint_path.with_suffix('.zip')
+        replay_path = checkpoint_path.with_name(checkpoint_path.stem + '_replay_buffer.pkl')
+        # Periodic SB3 callback names replay as <prefix>_replay_buffer_<steps>_steps.pkl.
+        if not replay_path.exists() and checkpoint_path.stem.endswith('_steps'):
+            parts = checkpoint_path.stem.rsplit('_', 2)
+            replay_path = checkpoint_path.with_name(f'{parts[0]}_replay_buffer_{parts[1]}_steps.pkl')
+        if replay_path.exists():
+            model.load_replay_buffer(str(replay_path))
+        elif not args.allow_legacy_resume:
+            raise FileNotFoundError('Replay buffer missing; --allow-legacy-resume permits a fresh replay warm-start')
+        else:
+            print('Warm-start: no saved replay buffer. This is not an exact continuation.')
         model.verbose = 1
         # Ensure TB log path is configured for continued runs
         model.tensorboard_log = str(log_dir)
@@ -344,8 +385,8 @@ def main() -> None:
             device="auto",
             tensorboard_log=str(log_dir),
             learning_rate=1e-4,
-            buffer_size=500_000,
-            learning_starts=10_000,
+            buffer_size=args.buffer_size,
+            learning_starts=args.learning_starts,
             batch_size=64,
             tau=1.0,
             gamma=0.99,
@@ -364,6 +405,9 @@ def main() -> None:
         )
 
     model.save(str(models_dir / f"{args.name_prefix}_final"))
+    write_metadata(models_dir / f"{args.name_prefix}_final.zip", settings)
+    if args.save_replay_buffer:
+        model.save_replay_buffer(str(models_dir / f"{args.name_prefix}_final_replay_buffer.pkl"))
     train_env.close()
 
 

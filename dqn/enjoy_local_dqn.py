@@ -88,6 +88,7 @@ def main() -> None:
         help="Enable hold/swap as part of the macro-action space (must match the checkpoint).",
     )
     parser.add_argument("--hold", action="store_true", help="Wait for Enter before closing.")
+    parser.add_argument('--invalid-action-mode', choices=['reject', 'legacy_drop'], default='legacy_drop')
     args = parser.parse_args()
 
     models_dir = Path(args.models_dir)
@@ -102,6 +103,7 @@ def main() -> None:
         next_n=int(args.next_n),
         reward_profile=str(args.reward_profile),
         observation_mode=args.obs,
+        invalid_action_mode=args.invalid_action_mode,
     )
 
     model = DQN.load(str(model_path), env=env)

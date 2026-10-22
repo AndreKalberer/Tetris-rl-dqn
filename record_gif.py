@@ -45,6 +45,10 @@ def find_latest_model(models_dir: Path) -> Path:
 
 
 def _infer_settings_from_name(model_path: Path) -> dict[str, object]:
+    from dqn.checkpoint_metadata import read_settings
+    saved = read_settings(model_path)
+    if saved:
+        return saved
     name = model_path.name.lower()
     obs = "board" if "board" in name else "features"
 
@@ -215,6 +219,7 @@ def main() -> None:
         next_n=int(next_n),
         reward_profile=str(reward_profile),
         observation_mode=str(obs),
+        invalid_action_mode=str(inferred.get('invalid_action_mode', 'legacy_drop')),
     )
 
     model = DQN.load(str(model_path), env=env)

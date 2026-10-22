@@ -21,6 +21,7 @@ from stable_baselines3 import DQN
 import tetris_gymnasium.envs  # noqa: F401
 
 from tetris_macro_env import TetrisPlacementEnv
+from dqn.checkpoint_metadata import read_settings
 
 
 def find_latest_model(models_dir: Path) -> Path:
@@ -48,6 +49,9 @@ def _pump_render_events() -> None:
         pass
 
 def _infer_settings_from_name(model_path: Path) -> dict[str, object]:
+    saved = read_settings(model_path)
+    if saved:
+        return saved
     name = model_path.name.lower()
     obs = "board" if "board" in name else "features"
 
@@ -141,6 +145,7 @@ def main() -> None:
         next_n=int(next_n),
         reward_profile=str(reward_profile),
         observation_mode=str(obs),
+        invalid_action_mode=str(inferred.get('invalid_action_mode', 'legacy_drop')),
     )
 
     model = DQN.load(str(model_path), env=env)
