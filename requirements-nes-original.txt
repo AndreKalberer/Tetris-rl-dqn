@@ -1,0 +1,5 @@
+# Keep this emulator environment separate from simulator and modern workers.
+gym-tetris==4.0.0
+nes-py==9.0.1
+gymnasium==1.2.3
+numpy==2.2.6

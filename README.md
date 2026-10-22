@@ -9,8 +9,11 @@ including retained results and instructions for restoring models and saved games
 Experimental NES work lives separately under [nes/](nes/README.md). Run
 `.\play-nes.ps1` for human play or `.\play-nes.ps1 -Bot -StartLevel 18` for the
 untrained stacking probe. This provisional engine has source-level mechanics
-checks; whole-ROM parity and NES RL training are still pending. The modern
-checkpoint's results do not transfer to NES.
+checks and an experimental [NES learner](nes/TRAINING.md). Whole-ROM parity is
+still pending. An [original-game emulator adapter](nes_original/README.md) now
+runs Nintendo USA/NTSC A-Type in nes-py, using genuine controller menus and
+read-only RAM observations. It is separate from the simulator and its trained
+policies. The modern checkpoint's results do not transfer to NES.
 
 The offline bot uses **legal timed inputs**: move, rotate, hold, and hard drop.
 Gravity and lock timing remain active. The older placement-action training
