@@ -1,0 +1,10 @@
+{
+  "decisions": 10000,
+  "sampled_training_replay_states": 256,
+  "changed_argmax": 84,
+  "changed_only_within_prior_tie": 18,
+  "mean_prior_gap": 0.017313003540039062,
+  "max_prior_gap": 0.51953125,
+  "median_residual_spread": 0.6734758913516998,
+  "scope": "Biased on-policy replay sample; diagnostic only, not independent strength evidence"
+}
