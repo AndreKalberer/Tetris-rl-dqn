@@ -93,7 +93,7 @@ def frame(board,state,buttons,level):
 
 
 @njit(cache=True)
-def lock_score(board,state,line_power=1):
+def lock_score(board,state,line_power=1,well_column=-1):
     x,y,orientation=state[:3]
     if collision(board,x,y,orientation):
         result=board
@@ -123,7 +123,7 @@ def lock_score(board,state,line_power=1):
                     result[0,col]=False
                 cleared+=1
         dead=False
-    height_sum=holes=bump=last_height=0
+    height_sum=holes=bump=last_height=max_height=well_height=0
     for col in range(10):
         seen=False
         height=0
@@ -134,18 +134,25 @@ def lock_score(board,state,line_power=1):
             elif not result[row,col] and seen:
                 holes+=1
         height_sum+=height
+        max_height=max(max_height,height)
+        if col==well_column:
+            well_height=height
         if col:
             bump+=abs(height-last_height)
         last_height=height
     # Match the existing float32 geometric heuristic's arithmetic stages.
-    score=(np.float32(.76)*(cleared**line_power) - np.float32(102)*np.float32(height_sum/200.)
-        - np.float32(900)*np.float32(holes/200.) - np.float32(36)*np.float32(bump/200.)
-        - np.float32(1000)*dead)
+    if well_column<0:
+        score=(np.float32(.76)*(cleared**line_power) - np.float32(102)*np.float32(height_sum/200.)
+            - np.float32(900)*np.float32(holes/200.) - np.float32(36)*np.float32(bump/200.)
+            - np.float32(1000)*dead)
+    else:
+        score=(.76*cleared**line_power-.25*height_sum-4.5*holes-.25*bump
+            -1.5*well_height-.15*max_height**2-1000*dead)
     return float(score)
 
 
 @njit(cache=True)
-def best_future(board,initial,level,horizontal_period=0,reaction=3,navigation=48,rotation_period=4,line_power=1):
+def best_future(board,initial,level,horizontal_period=0,reaction=3,navigation=48,rotation_period=4,line_power=1,well_column=-1):
     best=-1.e20
     kind=KINDS[initial[2]]
     for target in range(19):
@@ -181,12 +188,12 @@ def best_future(board,initial,level,horizontal_period=0,reaction=3,navigation=48
                     break
             if not failed:
                 raise RuntimeError('Compiled provisional action exceeded its bound')
-            best=max(best,lock_score(board,state,line_power))
+            best=max(best,lock_score(board,state,line_power,well_column))
     return best
 
 
-def warmup(line_power=1):
+def warmup(line_power=1,well_column=-1):
     board=np.zeros((20,10),dtype=np.bool_)
     state=(5,0,2,0,0,0,0,0)
-    best_future(board,state,18,0,3,48,4,line_power)
-    best_future(board,state,18,2,3,48,4,line_power)
+    best_future(board,state,18,0,3,48,4,line_power,well_column)
+    best_future(board,state,18,2,3,48,4,line_power,well_column)

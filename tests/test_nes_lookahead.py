@@ -22,6 +22,19 @@ def fixture(next_pose=2,level=18):
 
 
 class LookaheadTests(unittest.TestCase):
+    def test_well_is_explicit_and_default_prior_is_unchanged(self):
+        from nes_original.scoring import action_scores
+        plan=proposals(fixture())
+        self.assertTrue(np.array_equal(action_scores(plan.actions),plan.actions.heuristic))
+        board=np.zeros((20,10),dtype=bool)
+        board[-4:,:9]=True
+        actions=SimpleNamespace(boards=np.stack([board,board[:,::-1]]),
+            lines=np.zeros(2,dtype=int),terminal=np.zeros(2,dtype=bool))
+        right=action_scores(actions,2,9)
+        left=action_scores(actions,2,0)
+        self.assertGreater(right[0],right[1])
+        self.assertTrue(np.array_equal(right,left[::-1]))
+
     def test_dead_core_cannot_be_reported_as_a_successful_clear(self):
         import json
         from pathlib import Path
@@ -80,6 +93,23 @@ class LookaheadTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('numba'),'Optional isolated CPU compilation dependency')
 class CompiledTests(unittest.TestCase):
+    def test_well_search_matches_independent_numpy_enumeration(self):
+        from nes_original.fast import best_future
+        from nes_original.scoring import action_scores
+        rng=np.random.default_rng(891)
+        for case in range(60):
+            board=np.zeros((20,10),dtype=bool)
+            for x,h in enumerate(rng.integers(0,12,10)):
+                if h: board[-h:,x]=True
+            state=Control(orientation=SPAWN[case%7],fall=1,soft=0)
+            level=(18,19,29)[case%3]
+            well=(0,9)[case%2]
+            obs=Observation(board,state,0,Phase.ACTIVE,level,0,0,0,0,18)
+            actions=enumerate_actions(obs,ActionRules(horizontal_period=2))
+            expected=action_scores(actions,2,well).max()
+            actual=best_future(board,tuple(vars(state).values()),level,2,3,48,4,2,well)
+            self.assertAlmostEqual(float(expected),actual,places=3)
+
     def test_compiled_frame_matches_reference_for_randomized_controls(self):
         from nes_original.fast import frame
         rng=np.random.default_rng(917)

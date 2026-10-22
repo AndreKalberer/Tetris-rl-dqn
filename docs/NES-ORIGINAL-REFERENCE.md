@@ -64,6 +64,12 @@ The residual Double DQN must beat that same prior/controller on fresh starts to
 establish a learning gain. Learning starts after1024 teacher decisions. Retain
 failed policies, targets, board discrepancies, selection starts and protocols.
 
+An unpromoted scoring experiment is available with `--well-column 9 --line-power 2`
+on `nes_original.lookahead`. It lowers aggregate-height pressure, reserves a
+column for Tetrises and adds quadratic peak-height pressure. Survival/score gains
+are hypotheses; defaults and existing model priors remain unchanged. Keep its
+results separate from the validated prior and the frozen learning study.
+
 ## Timing, proof and limits
 
 Mesen's input-polled boundary is at PPU241:0, with measured zero pending input.

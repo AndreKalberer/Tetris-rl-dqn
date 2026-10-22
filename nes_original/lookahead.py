@@ -16,10 +16,11 @@ from nes.engine import Control,Observation,Phase,SPAWN,TYPE,control_frame
 from nes_original.env import OriginalGame
 from nes_original.feedback import FeedbackController
 from nes_original.progression import after_clear
+from nes_original.scoring import action_scores
 
 
 class NextPiece:
-    def __init__(self, beam=3,tap_period=0,jit=False,line_power=1):
+    def __init__(self, beam=3,tap_period=0,jit=False,line_power=1,well_column=-1):
         if beam < 1:
             raise ValueError('Beam must be positive')
         self.beam = beam
@@ -27,10 +28,13 @@ class NextPiece:
         if line_power not in (1,2):
             raise ValueError('Line reward exponent must be1 or2')
         self.line_power = line_power
+        if not -1<=well_column<10:
+            raise ValueError('Well column must be -1 or0..9')
+        self.well_column=well_column
         self.fast = None
         if jit:
             from nes_original import fast
-            fast.warmup(line_power)  # Compile every argument type before gameplay.
+            fast.warmup(line_power,well_column)  # Compile every argument type before gameplay.
             self.fast = fast
         self.calls = self.expansions = 0
         self.times = []
@@ -39,7 +43,8 @@ class NextPiece:
         start = time.perf_counter()
         actions = plan.actions
         shortlist,seen = [],set()
-        for index in np.argsort(-actions.heuristic,kind='stable'):
+        root_scores=action_scores(actions,self.line_power,self.well_column)
+        for index in np.argsort(-root_scores,kind='stable'):
             if actions.terminal[index]:
                 continue
             board = actions.boards[index] != 0
@@ -50,8 +55,8 @@ class NextPiece:
             if len(shortlist) >= self.beam:
                 break
         if not shortlist:
-            self.last_scores = actions.heuristic.astype(np.float32).copy()
-            return int(actions.heuristic.argmax())
+            self.last_scores = root_scores.astype(np.float32).copy()
+            return int(root_scores.argmax())
         next_pose = SPAWN[TYPE[obs.next_orientation]]
         scored = []
         for index in shortlist:
@@ -74,10 +79,10 @@ class NextPiece:
                 if self.fast:
                     value = self.fast.best_future(board,tuple(vars(state).values()),level,
                         self.rules.horizontal_period,self.rules.reaction_frames,self.rules.navigation_frames,
-                        self.rules.rotation_period,self.line_power)
+                        self.rules.rotation_period,self.line_power,self.well_column)
                 else:
                     children = enumerate_actions(future,self.rules)
-                    h = children.heuristic + .76*(children.lines**self.line_power-children.lines)
+                    h = action_scores(children,self.line_power,self.well_column)
                     value = float(h.max())
                 self.expansions += 1
             score = .76*int(actions.lines[index])**self.line_power + value
@@ -85,7 +90,7 @@ class NextPiece:
         self.calls += 1
         self.times.append(time.perf_counter()-start)
         cache = {(actions.boards[i]!=0).tobytes():float(value) for i,value in zip(shortlist,scored)}
-        self.last_scores = np.asarray([cache.get((board!=0).tobytes(),float(actions.heuristic[i]))
+        self.last_scores = np.asarray([cache.get((board!=0).tobytes(),float(root_scores[i]))
             for i,board in enumerate(actions.boards)],dtype=np.float32)
         return shortlist[int(np.argmax(scored))]
 
@@ -95,7 +100,7 @@ class NextPiece:
         return self.last_scores.copy()
 
     def stats(self):
-        return dict(beam=self.beam,line_power=self.line_power,compiled=bool(self.fast),calls=self.calls,expanded_boards=self.expansions,
+        return dict(beam=self.beam,line_power=self.line_power,well_column=self.well_column,compiled=bool(self.fast),calls=self.calls,expanded_boards=self.expansions,
             selector_p50_ms=float(np.median(self.times)*1000) if self.times else 0,
             selector_p95_ms=float(np.percentile(self.times,95)*1000) if self.times else 0,
             selector_max_ms=max(self.times,default=0)*1000,
@@ -103,8 +108,8 @@ class NextPiece:
 
 
 def episode(seed, *, beam=3, baseline=False, runtime=True, output=None,tap_period=0,jit=False,line_power=1,
-            max_frames=120000, wall_seconds=600,game_factory=OriginalGame):
-    lookahead = NextPiece(beam,tap_period,jit and not baseline,line_power)
+            max_frames=120000, wall_seconds=600,game_factory=OriginalGame,well_column=-1):
+    lookahead = NextPiece(beam,tap_period,jit and not baseline,line_power,well_column)
     controller = FeedbackController(fixed_reaction=not runtime,
         context_selector=None if baseline else lookahead,tap_period=tap_period)
     with game_factory() as game:
@@ -170,6 +175,8 @@ def main():
     p.add_argument('--tap-period',type=int,default=0)
     p.add_argument('--jit',action='store_true')
     p.add_argument('--line-power',type=int,choices=[1,2],default=1)
+    p.add_argument('--well-column',type=int,choices=range(-1,10),default=-1,
+        help='Experimental scoring well; -1 retains the validated geometric prior')
     p.add_argument('--jit-deps',type=Path)
     p.add_argument('--mesen',type=Path,help='Independent portable reference executable')
     p.add_argument('--fixed-reaction',action='store_true')
@@ -191,7 +198,7 @@ def main():
     rows = []
     for seed in args.seeds:
         row = episode(seed,beam=args.beam,baseline=args.baseline,runtime=not args.fixed_reaction,tap_period=args.tap_period,jit=args.jit,line_power=args.line_power,
-                      output=args.output/f'seed{seed}',game_factory=factory)
+                      output=args.output/f'seed{seed}',game_factory=factory,well_column=args.well_column)
         rows.append(row)
         (args.output/'results.json').write_text(json.dumps(rows,indent=2)+'\n',encoding='utf-8')
         print(json.dumps(row),flush=True)
