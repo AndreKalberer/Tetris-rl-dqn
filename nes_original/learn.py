@@ -365,17 +365,49 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
                     controller.transition(before,o)
                 except (AssertionError,RuntimeError) as exc:
                     error = str(exc)
+                    # Both native backends expose a non-advancing observation.
+                    # A transition may fail after a successful frame; retain
+                    # that latest cached/native state without stepping again.
+                    try:
+                        o = game.observe()
+                    except Exception:
+                        pass
                     break
-            record = game.replay()
             path = Path(output)/f'seed-{seed}.json'
-            write_json(path,record)
             backend=type(game).__name__
-        with game_factory() as other:
-            other.load_replay(record)
-        rows.append(dict(seed=int(seed),level=o.level,lines=o.lines,score=o.score,backend=backend,
-                placements=o.placements,success=o.level>=30 and not error,
+            case_path = Path(output)/f'seed-{seed}-case.json'
+            row = dict(seed=int(seed),level=o.level,lines=o.lines,score=o.score,backend=backend,
+                placements=o.placements,success=False,
                 over=o.over,error=error,censored=not o.over and o.level<30,
-                exact_ram_rgb_replay=True,controller=controller.stats()))
+                exact_ram_rgb_replay=False,controller=controller.stats(),
+                case_state='verification_pending')
+            # Write gameplay telemetry before screen capture/core shutdown or
+            # fresh-process reconstruction can fail or be interrupted.
+            write_json(case_path,row)
+            try:
+                record = game.replay()
+                write_json(path,record)
+            except Exception as exc:
+                row.update(case_state='verification_failed',verification_error=repr(exc),
+                           verification_failure_phase='replay_capture')
+                write_json(case_path,row)
+                write_json(Path(output)/f'seed-{seed}-raw-inputs.json',
+                    dict(input_hex=game.inputs.hex(),backend=backend,
+                         exact_replay_verified=False,error=error,capture_error=repr(exc)))
+                raise
+        try:
+            with game_factory() as other:
+                other.load_replay(record)
+        except Exception as exc:
+            row.update(case_state='verification_failed',verification_error=repr(exc),
+                       verification_failure_phase='fresh_replay')
+            write_json(case_path,row)
+            raise
+        row.update(case_state='verified',exact_ram_rgb_replay=True,
+                   success=o.level>=30 and not error)
+        write_json(case_path,row)
+        rows.append(row)
+        write_json(Path(output)/'results.json',rows)
     write_json(Path(output)/'results.json',rows)
     return rows
 
