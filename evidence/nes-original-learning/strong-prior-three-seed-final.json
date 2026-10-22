@@ -1,0 +1,227 @@
+[
+  {
+    "seed": 0,
+    "decisions": 10000,
+    "updates": 2245,
+    "selected_decisions": 10000,
+    "selected_rank": [
+      2,
+      240.0,
+      263444.0
+    ],
+    "best_training_lines": 241,
+    "best_training_level": 30,
+    "runtime": [
+      {
+        "seed": 1001,
+        "level": 30,
+        "lines": 240,
+        "score": 242002,
+        "placements": 605,
+        "success": true,
+        "over": false,
+        "error": null,
+        "censored": false,
+        "exact_ram_rgb_replay": true,
+        "controller": {
+          "plans": 605,
+          "planning_seconds": 5.972810500010382,
+          "planning_overruns": 0,
+          "extra_idle_frames": 0,
+          "runtime_latency_charged": true,
+          "target_misses": 0,
+          "proposal_board_differences": 0,
+          "board_audit_failures": 0,
+          "top_boundary_locks": 0,
+          "piece_type_differences": 0,
+          "action_interface": "Native feedback targets; approximate proposal features",
+          "reaction_frames": 3,
+          "navigation_frames": 48,
+          "horizontal_change_period": 1,
+          "horizontal_pulse_period": 2,
+          "rotation_period": 4
+        }
+      },
+      {
+        "seed": 1013,
+        "level": 30,
+        "lines": 240,
+        "score": 284886,
+        "placements": 601,
+        "success": true,
+        "over": false,
+        "error": null,
+        "censored": false,
+        "exact_ram_rgb_replay": true,
+        "controller": {
+          "plans": 601,
+          "planning_seconds": 5.763353999980609,
+          "planning_overruns": 0,
+          "extra_idle_frames": 0,
+          "runtime_latency_charged": true,
+          "target_misses": 0,
+          "proposal_board_differences": 0,
+          "board_audit_failures": 0,
+          "top_boundary_locks": 0,
+          "piece_type_differences": 0,
+          "action_interface": "Native feedback targets; approximate proposal features",
+          "reaction_frames": 3,
+          "navigation_frames": 48,
+          "horizontal_change_period": 1,
+          "horizontal_pulse_period": 2,
+          "rotation_period": 4
+        }
+      }
+    ]
+  },
+  {
+    "seed": 1,
+    "decisions": 10000,
+    "updates": 2245,
+    "selected_decisions": 5000,
+    "selected_rank": [
+      2,
+      240.5,
+      248327.0
+    ],
+    "best_training_lines": 240,
+    "best_training_level": 30,
+    "runtime": [
+      {
+        "seed": 1001,
+        "level": 30,
+        "lines": 240,
+        "score": 257999,
+        "placements": 604,
+        "success": true,
+        "over": false,
+        "error": null,
+        "censored": false,
+        "exact_ram_rgb_replay": true,
+        "controller": {
+          "plans": 604,
+          "planning_seconds": 6.577935200170032,
+          "planning_overruns": 0,
+          "extra_idle_frames": 0,
+          "runtime_latency_charged": true,
+          "target_misses": 0,
+          "proposal_board_differences": 0,
+          "board_audit_failures": 0,
+          "top_boundary_locks": 0,
+          "piece_type_differences": 0,
+          "action_interface": "Native feedback targets; approximate proposal features",
+          "reaction_frames": 3,
+          "navigation_frames": 48,
+          "horizontal_change_period": 1,
+          "horizontal_pulse_period": 2,
+          "rotation_period": 4
+        }
+      },
+      {
+        "seed": 1013,
+        "level": 30,
+        "lines": 241,
+        "score": 238655,
+        "placements": 608,
+        "success": true,
+        "over": false,
+        "error": null,
+        "censored": false,
+        "exact_ram_rgb_replay": true,
+        "controller": {
+          "plans": 608,
+          "planning_seconds": 6.166118600071059,
+          "planning_overruns": 0,
+          "extra_idle_frames": 0,
+          "runtime_latency_charged": true,
+          "target_misses": 0,
+          "proposal_board_differences": 0,
+          "board_audit_failures": 0,
+          "top_boundary_locks": 0,
+          "piece_type_differences": 0,
+          "action_interface": "Native feedback targets; approximate proposal features",
+          "reaction_frames": 3,
+          "navigation_frames": 48,
+          "horizontal_change_period": 1,
+          "horizontal_pulse_period": 2,
+          "rotation_period": 4
+        }
+      }
+    ]
+  },
+  {
+    "seed": 2,
+    "decisions": 10000,
+    "updates": 2245,
+    "selected_decisions": 0,
+    "selected_rank": [
+      2,
+      240.0,
+      258166.0
+    ],
+    "best_training_lines": 241,
+    "best_training_level": 30,
+    "runtime": [
+      {
+        "seed": 1001,
+        "level": 30,
+        "lines": 240,
+        "score": 231218,
+        "placements": 603,
+        "success": true,
+        "over": false,
+        "error": null,
+        "censored": false,
+        "exact_ram_rgb_replay": true,
+        "controller": {
+          "plans": 603,
+          "planning_seconds": 5.278828799840994,
+          "planning_overruns": 0,
+          "extra_idle_frames": 0,
+          "runtime_latency_charged": true,
+          "target_misses": 0,
+          "proposal_board_differences": 0,
+          "board_audit_failures": 0,
+          "top_boundary_locks": 0,
+          "piece_type_differences": 0,
+          "action_interface": "Native feedback targets; approximate proposal features",
+          "reaction_frames": 3,
+          "navigation_frames": 48,
+          "horizontal_change_period": 1,
+          "horizontal_pulse_period": 2,
+          "rotation_period": 4
+        }
+      },
+      {
+        "seed": 1013,
+        "level": 30,
+        "lines": 240,
+        "score": 285114,
+        "placements": 603,
+        "success": true,
+        "over": false,
+        "error": null,
+        "censored": false,
+        "exact_ram_rgb_replay": true,
+        "controller": {
+          "plans": 603,
+          "planning_seconds": 5.790271299818414,
+          "planning_overruns": 0,
+          "extra_idle_frames": 0,
+          "runtime_latency_charged": true,
+          "target_misses": 0,
+          "proposal_board_differences": 0,
+          "board_audit_failures": 0,
+          "top_boundary_locks": 0,
+          "piece_type_differences": 0,
+          "action_interface": "Native feedback targets; approximate proposal features",
+          "reaction_frames": 3,
+          "navigation_frames": 48,
+          "horizontal_change_period": 1,
+          "horizontal_pulse_period": 2,
+          "rotation_period": 4
+        }
+      }
+    ]
+  }
+]

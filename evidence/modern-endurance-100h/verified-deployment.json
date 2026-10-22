@@ -1,0 +1,17 @@
+{
+  "pid": 25964,
+  "state": "running",
+  "lines": 80479,
+  "simulated_hours": 38.48912037037037,
+  "max_total_simulated_hours": 100.0,
+  "max_simulated_frames": 21600000,
+  "cpu_core_budget": 4.0,
+  "torch_threads": 2,
+  "actual_affinity_mask": 1108,
+  "actual_priority": "Normal",
+  "preserved_continuation_frame": 8257046,
+  "worker_sha256": "d24463effe62081aef344a740f5bac9f2aa047349470f5bef1c9dbaba27fe0bc",
+  "path_mismatches": 0,
+  "rejected_inputs": 0,
+  "output": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\overnight-modern\\runs\\continued-20261022-151757"
+}
