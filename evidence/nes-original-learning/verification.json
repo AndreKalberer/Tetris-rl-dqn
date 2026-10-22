@@ -1,0 +1,21 @@
+{
+  "main_pytest": {
+    "passed": 87,
+    "skipped": 11
+  },
+  "native_base_unittest_passed": 10,
+  "native_learning_unittest_passed": 3,
+  "checkpoint": "Original native RAM/RGB, input trace, online weights, optimizer-updated next decisions, RNG, replay and inference export match after full resume",
+  "smoke": {
+    "decisions": 500,
+    "updates": 94,
+    "episodes": 5,
+    "best_training_lines": 74,
+    "best_training_level": 18
+  },
+  "remaining": "No level29 completion or reliable RL gain established; smoke is engineering evidence",
+  "retained_failures": [
+    "Strict actual-pose mismatch at decision111",
+    "Stalled cross-piece rotation caused by torn phase/orientation RAM; fixed by native spawn settling, bounded rotation validation and non-rotating forced drop"
+  ]
+}

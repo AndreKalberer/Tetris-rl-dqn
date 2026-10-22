@@ -13,10 +13,11 @@ from nes_original.planner import control, proposals
 
 
 class Controller:
-    def __init__(self, *, fixed_reaction=False, policy='heuristic', seed=0):
+    def __init__(self, *, fixed_reaction=False, policy='heuristic', seed=0, selector=None, board_input=False):
         self.fixed_reaction = fixed_reaction
         self.policy = policy
         self.rng = np.random.default_rng(seed)
+        self.selector, self.board_input = selector, board_input
         self.queue = deque()
         self.idle = 0
         self.expected = None
@@ -45,9 +46,10 @@ class Controller:
             self.drop_adjustments += 1
             return int(Buttons.DOWN)
         started = time.perf_counter()
-        plan = proposals(obs)
+        plan = proposals(obs,board_input=self.board_input)
         if plan is not None:
-            selected = (int(plan.actions.heuristic.argmax()) if self.policy == 'heuristic'
+            selected = (int(self.selector(plan)) if self.selector is not None else
+                        int(plan.actions.heuristic.argmax()) if self.policy == 'heuristic'
                         else int(self.rng.integers(len(plan.paths))))
         elapsed = time.perf_counter()-started
         self.planning_seconds += elapsed
@@ -60,6 +62,13 @@ class Controller:
                 self.idle = max(0,int(np.ceil(elapsed*FPS))-1)
                 self.extra_idle_frames += 1
                 return 0
+        self.start_plan(obs,plan,selected if plan is not None else 0)
+        return self.queue.popleft()
+
+    def start_plan(self, obs, plan, selected):
+        """Prepare a chosen legal path; used by actual-emulator training too."""
+        if self.stage is not None or self.queue:
+            raise RuntimeError('Cannot replace a live controller path')
         if plan is None:
             state, _ = control_frame(obs.board,control(obs),obs.pending,obs.level)
             self.expected = (state,None,None,None)
@@ -70,7 +79,6 @@ class Controller:
             self.queue = deque(plan.paths[selected])
         self.stage = 'path'
         self.drop_frames = 0
-        return self.queue.popleft()
 
     def transition(self, before, after):
         def fail(message):

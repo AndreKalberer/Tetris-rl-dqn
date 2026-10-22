@@ -26,7 +26,8 @@ needed for the verified installed package. No game image is committed here.
 The run is headless. To export its first 1,800 original RGB frames as an H.264
 video, install ffmpeg on PATH and add `--video demo.mp4` to the replay command.
 The entire saved run is still replayed and verified even if the video is shorter.
-Interactive original-game human play and neural training are unfinished.
+Interactive original-game human play remains unfinished. Original-game
+training is described in [TRAINING.md](TRAINING.md).
 
 ## Instrumentation and reproducibility
 
@@ -92,9 +93,14 @@ native snapshots, portable continuation, original controller/geometry checks at
 three speeds, natural top-out/statistics, read-only RAM and latency accounting.
 These establish useful instrumentation, not cycle-accurate physical hardware
 certification. Full late-game/level-29 behavior, broader states and an independent
-emulator comparison remain unvalidated. No neural policy has been trained in
-this original-game environment yet; original-game training/resume integration,
-three independent learning seeds and the level-29/500k acceptance study remain.
+emulator comparison remain unvalidated. Actual-emulator training and exact trainer
+resume now have tests. Longer smoke runs exposed additional torn RAM samples
+that can mix the new active phase with the old piece orientation. The separate
+feedback learning controller waits for stable spawn observations; it treats
+proposal boards as approximate features, logs target misses/prediction errors,
+and audits actual native board accounting and exact episode replay. The strict
+preview-audit controller above remains available with its checks intact.
+Three-seed learning and level-29/500k acceptance results are still pending.
 
 Upstream sources: https://github.com/Kautenja/nes-py and
 https://github.com/Kautenja/gym-tetris. Inspected wheel hashes, smoke findings,

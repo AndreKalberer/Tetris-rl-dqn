@@ -42,6 +42,8 @@ def structural(boards):
 
 
 def rotate_button(current,target):
+    if not 0<=current<19 or not 0<=target<19 or TYPE[current]!=TYPE[target]:
+        raise ValueError('Rotation target must belong to the current piece')
     clockwise=counterclockwise=0
     pose=current
     while pose!=target:
