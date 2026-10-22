@@ -2,13 +2,13 @@
 
 Goal: Finish Andre's personal Tetris RL v1: documented offline timed rules and legal controls, >=18/20 forty-line acceptance passes at frozen difficulty, reproducible three-training-seed planning study with cost/regression/censoring reporting, one-command setup/play/evaluate, visible metrics, saved/resumable models, tests, README, and a demo. The 10k-line research target is optional stretch work. Work locally without cloud spending or GitHub publication.
 
-Status: Local checkpoint complete. Modern offline source, models, evidence and resumable states are saved before NES work.
+Status: Checkpoint published to GitHub. The branch and immutable source tag were verified against the remote.
 
 Verified results: 33 tests pass in the current checkpoint; the frozen v1 release passed its original 30-test suite. Reserved 9100091019: 20 passes, zero rejected bot inputs, zero predicted/actual board mismatches, zero planning overruns, and exact frame-input replay for every game. Median simulated sprint 74.41s, range 70.0076.35s. A separate packaged smoke game also passed. H.264 demo: 1437 frames, 20fps, 760x680, visually inspected; acceptance/provenance and earlier research evidence are included. The three-training-seed capped research study and known regression remain fully disclosed.
 
-Active work: None. Commit 445813a is frozen by checkpoint/modern-offline-2026-10-21; the 70.3 MB portable archive and complete-history Git bundle passed integrity and restore checks. No training or endurance worker is running.
+Active work: No training, endurance or NES job is running. Publication is verified; recording this result in the progress history.
 
-Next step: Use the checkpoint ZIP and CHECKPOINT.md to restore or continue. Source checkpoint is commit 445813adcfe6e79bb9ae59555948b6a063ee7c01. Future NES work should start from a separate branch; no NES implementation has begun. The original Offline Sprint v1 archive remains unchanged.
+Next step: The modern checkpoint is available on GitHub at improve/local-afterstate-agent and checkpoint/modern-offline-2026-10-21. Full training/game backup remains in outputs/Tetris-RL-Checkpoint-2026-10-21.zip. NES development can start separately when requested.
 
 ## Milestone history
 - 2026-10-21: Started repository exploration. No source changes or training runs performed.
@@ -151,3 +151,7 @@ Next step: Use the checkpoint ZIP and CHECKPOINT.md to restore or continue. Sour
 - 2026-10-21: Created source commit 445813adcfe6e79bb9ae59555948b6a063ee7c01 and annotated tag checkpoint/modern-offline-2026-10-21. Git bundle created and verified with complete history and no prerequisites. The checkpoint ZIP is building from the exact committed source plus full training states, original endurance segments and the frozen v1 release.
 
 - 2026-10-21: Checkpoint finished: archive Tetris-RL-Checkpoint-2026-10-21.zip is 70,286,234 bytes; SHA-256 1ef8518159309a0d1334d73638ccbcc04bc7b564748382bb13ccffeeaaee00c5. All 95 content file hashes and archive CRCs verified. Full-history bundle cloned into a separate directory, tag resolves to 445813a, git fsck passed, and restored Git checkout is clean. Extracted source replayed the complete endurance game to 38,666 placements / 15,464 lines. The relocated game continued 46 frames / one piece with zero control errors; this was a tiny restore smoke probe, not a performance sample. Actual seed1-100k training checkpoint loaded with matching inference weights and 5,000 replay entries and executed one training step; original artifacts were not overwritten. Current source tests: 33 passed. Portable archive includes five full training checkpoints, both original endurance segments, five inference snapshots, demo, evidence, source, Git bundle and prior frozen v1 release. No push or NES work performed. Final progress verification is recorded in a separate documentation commit after the frozen source checkpoint.
+
+- 2026-10-21: Andre explicitly authorized pushing the prepared checkpoint. Verified origin is AndreKalberer/Tetris-rl-dqn, branch improve/local-afterstate-agent is at b7040d9, and checkpoint tag resolves to source commit 445813a. Publishing these existing refs without force, merge, PR or release creation.
+
+- 2026-10-21: Atomic push succeeded to AndreKalberer/Tetris-rl-dqn: created branch improve/local-afterstate-agent and annotated tag checkpoint/modern-offline-2026-10-21. Independent git ls-remote verified branch b7040d999f7c7dcecc7f61d399679a35fae142af, tag object 75b0e5d6100264bb598e5339d8d50e422ac11247, and peeled source commit 445813adcfe6e79bb9ae59555948b6a063ee7c01. Publishing this final progress note as a follow-up documentation commit. Full resume archive remains a local deliverable; no merge, PR, release, cloud spending or NES work performed.
