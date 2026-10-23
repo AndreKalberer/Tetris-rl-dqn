@@ -17,7 +17,8 @@ from nes_original.planner import proposals
 class FeedbackController:
     def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0,
                  no_softdrop_at_1g=False, no_softdrop_levels=(), nonactive_input=0,
-                 stall_rescue_input=0, stall_rescue_after=120):
+                 stall_rescue_input=0, stall_rescue_after=120,
+                 stall_rescue_fallback_input=0, stall_rescue_primary_frames=8):
         self.fixed_reaction,self.selector = fixed_reaction,selector
         self.context_selector = context_selector
         self.tap_period = tap_period
@@ -42,7 +43,19 @@ class FeedbackController:
                 or not 1 <= stall_rescue_after <= 599):
             raise ValueError('Stall rescue threshold must be an integer1..599 frames')
         self.stall_rescue_input, self.stall_rescue_after = int(stall_rescue_input), stall_rescue_after
+        if (isinstance(stall_rescue_fallback_input, bool) or not isinstance(stall_rescue_fallback_input, int)
+                or stall_rescue_fallback_input not in (0, 1, 2, 32, 64, 128)):
+            raise ValueError('Stall rescue fallback must be one legal native button byte0,1,2,32,64,128')
+        if (isinstance(stall_rescue_primary_frames, bool) or not isinstance(stall_rescue_primary_frames, int)
+                or not 1 <= stall_rescue_primary_frames <= 599):
+            raise ValueError('Stall rescue primary duration must be an integer1..599 frames')
+        if stall_rescue_fallback_input and (not stall_rescue_input
+                or stall_rescue_after+stall_rescue_primary_frames > 599):
+            raise ValueError('Configured fallback requires primary input and an escalation deadline<=599')
+        self.stall_rescue_fallback_input = int(stall_rescue_fallback_input)
+        self.stall_rescue_primary_frames = stall_rescue_primary_frames
         self.stall_rescue_attempts = self.stall_rescue_frames = 0
+        self.stall_rescue_fallback_activations = self.stall_rescue_fallback_frames = 0
         self._reset_stall_window()
         self.rules = ActionRules(horizontal_period=tap_period)
         self.stage = None
@@ -138,6 +151,7 @@ class FeedbackController:
     def _reset_stall_window(self):
         self._stall_key = self._stall_start_frame = self._stall_last_frame = None
         self._stall_activated = False
+        self._stall_fallback_activated = False
         self._stall_last_rescue_frame = None
 
     def _stall_button(self, obs):
@@ -161,15 +175,24 @@ class FeedbackController:
             self._stall_start_frame = self._stall_last_frame = frame
             return None
         self._stall_last_frame = frame
-        if frame-self._stall_start_frame < self.stall_rescue_after:
+        elapsed = frame-self._stall_start_frame
+        if elapsed < self.stall_rescue_after:
             return None
         if not self._stall_activated:
             self._stall_activated = True
             self.stall_rescue_attempts += 1
+        fallback = (self.stall_rescue_fallback_input != 0
+                    and elapsed >= self.stall_rescue_after+self.stall_rescue_primary_frames)
+        if fallback and not self._stall_fallback_activated:
+            self._stall_fallback_activated = True
+            self.stall_rescue_fallback_activations += 1
         if frame != self._stall_last_rescue_frame:
+            # Total rescue frames includes fallback; fallback_frames is a subset.
             self.stall_rescue_frames += 1
+            if fallback:
+                self.stall_rescue_fallback_frames += 1
             self._stall_last_rescue_frame = frame
-        return self.stall_rescue_input
+        return self.stall_rescue_fallback_input if fallback else self.stall_rescue_input
 
     def _nonactive_button(self, obs):
         # Count all calls routed to this profile, including default neutral0.
@@ -237,4 +260,8 @@ class FeedbackController:
             stall_rescue_input=self.stall_rescue_input,
             stall_rescue_after=self.stall_rescue_after,
             stall_rescue_attempts=self.stall_rescue_attempts,
-            stall_rescue_frames=self.stall_rescue_frames)
+            stall_rescue_frames=self.stall_rescue_frames,
+            stall_rescue_fallback_input=self.stall_rescue_fallback_input,
+            stall_rescue_primary_frames=self.stall_rescue_primary_frames,
+            stall_rescue_fallback_activations=self.stall_rescue_fallback_activations,
+            stall_rescue_fallback_frames=self.stall_rescue_fallback_frames)

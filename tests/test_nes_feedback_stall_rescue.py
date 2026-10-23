@@ -16,6 +16,76 @@ def observation(frame=0, **changes):
 
 
 class StallRescueTests(unittest.TestCase):
+    def test_eight_primary_frames_then_fallback_and_same_frame_idempotence(self):
+        c = FeedbackController(stall_rescue_input=128, stall_rescue_after=120,
+            stall_rescue_fallback_input=1, stall_rescue_primary_frames=8)
+        self.assertEqual(c.command(observation(100)), 0)
+        for frame in range(220, 228):
+            self.assertEqual(c.command(observation(frame)), 128)
+        self.assertEqual((c.stall_rescue_attempts, c.stall_rescue_frames), (1, 8))
+        self.assertEqual(c.command(observation(228)), 1)
+        for _ in range(50):
+            self.assertEqual(c.command(observation(228)), 1)
+        self.assertEqual((c.stall_rescue_fallback_activations, c.stall_rescue_fallback_frames), (1, 1))
+        self.assertEqual(c.stall_rescue_frames, 9)
+        self.assertEqual(c.command(observation(229)), 1)
+        self.assertEqual(c.stall_rescue_fallback_frames, 2)
+
+    def test_frame_gap_crosses_fallback_deadline_without_fabricated_primary_frames(self):
+        c = FeedbackController(stall_rescue_input=128, stall_rescue_after=3,
+            stall_rescue_fallback_input=1, stall_rescue_primary_frames=8)
+        self.assertEqual(c.command(observation(0)), 0)
+        self.assertEqual(c.command(observation(20)), 1)
+        self.assertEqual((c.stall_rescue_attempts, c.stall_rescue_frames,
+            c.stall_rescue_fallback_activations, c.stall_rescue_fallback_frames), (1, 1, 1, 1))
+
+    def test_escalation_restarts_after_key_active_or_invalid_frame_changes(self):
+        for reset_kind in ('key', 'active', 'invalid', 'backward'):
+            c = FeedbackController(stall_rescue_input=128, stall_rescue_after=2,
+                stall_rescue_fallback_input=1, stall_rescue_primary_frames=2)
+            c.command(observation(10))
+            self.assertEqual(c.command(observation(14)), 1)
+            if reset_kind == 'key':
+                self.assertEqual(c.command(observation(15, y=17)), 0)
+            elif reset_kind == 'active':
+                c.stage = 'settle'
+                self.assertEqual(c.command(observation(15, phase=1)), 0)
+            elif reset_kind == 'invalid':
+                self.assertEqual(c.command(observation(None)), 0)
+            else:
+                self.assertEqual(c.command(observation(1)), 0)
+            self.assertEqual(c.command(observation(20)), 0)
+            self.assertEqual(c.command(observation(22)), 128)
+            self.assertEqual(c.command(observation(23)), 128)
+            self.assertEqual(c.command(observation(24)), 1)
+            self.assertEqual(c.stall_rescue_fallback_activations, 2)
+
+    def test_disabled_fallback_retains_classic_primary_indefinitely(self):
+        c = FeedbackController(stall_rescue_input=128, stall_rescue_after=599,
+            stall_rescue_fallback_input=0, stall_rescue_primary_frames=599)
+        c.command(observation(0))
+        for frame in (599, 600, 1198, 5000):
+            self.assertEqual(c.command(observation(frame)), 128)
+        self.assertEqual((c.stall_rescue_fallback_activations, c.stall_rescue_fallback_frames), (0, 0))
+
+    def test_fallback_configuration_is_strict_and_deadline_is_bounded(self):
+        self.assertEqual(FeedbackController().stats()['stall_rescue_fallback_input'], 0)
+        self.assertEqual(FeedbackController().stats()['stall_rescue_primary_frames'], 8)
+        boundary = FeedbackController(stall_rescue_input=128, stall_rescue_after=598,
+            stall_rescue_fallback_input=1, stall_rescue_primary_frames=1)
+        self.assertEqual(boundary.stats()['stall_rescue_primary_frames'], 1)
+        for invalid in (True, False, -1, 3, 4, 8, 16, 96, 129, 256, 1.0, '1', None):
+            with self.subTest(fallback=invalid), self.assertRaises(ValueError):
+                FeedbackController(stall_rescue_input=128, stall_rescue_fallback_input=invalid)
+        for invalid in (True, False, 0, -1, 600, 8.0, '8', None):
+            with self.subTest(primary_frames=invalid), self.assertRaises(ValueError):
+                FeedbackController(stall_rescue_primary_frames=invalid)
+        with self.assertRaises(ValueError):
+            FeedbackController(stall_rescue_fallback_input=1)
+        with self.assertRaises(ValueError):
+            FeedbackController(stall_rescue_input=128, stall_rescue_after=599,
+                stall_rescue_fallback_input=1, stall_rescue_primary_frames=1)
+
     def test_threshold_uses_actual_frames_and_duplicate_calls_do_not_count(self):
         c = FeedbackController(stall_rescue_input=128, stall_rescue_after=120)
         self.assertEqual(c.command(observation(100)), 0)
