@@ -16,7 +16,7 @@ from nes_original.planner import proposals
 
 class FeedbackController:
     def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0,
-                 no_softdrop_at_1g=False, no_softdrop_levels=()):
+                 no_softdrop_at_1g=False, no_softdrop_levels=(), nonactive_input=0):
         self.fixed_reaction,self.selector = fixed_reaction,selector
         self.context_selector = context_selector
         self.tap_period = tap_period
@@ -29,6 +29,11 @@ class FeedbackController:
                for level in levels):
             raise ValueError('No-softdrop levels must be integers29..255; booleans are excluded')
         self.no_softdrop_levels = frozenset(levels)
+        if (isinstance(nonactive_input, bool) or not isinstance(nonactive_input, int)
+                or nonactive_input not in (0, 1, 2, 32, 64, 128)):
+            raise ValueError('Nonactive input must be one legal native button byte0,1,2,32,64,128')
+        self.nonactive_input = int(nonactive_input)
+        self.nonactive_input_frames = 0
         self.rules = ActionRules(horizontal_period=tap_period)
         self.stage = None
         self.idle = 0
@@ -67,9 +72,9 @@ class FeedbackController:
         if self.idle:
             self.idle -= 1
             self.extra_idle_frames += 1
-            return 0
+            return self._nonactive_button() if obs.phase != 1 else 0
         if obs.phase != 1:
-            return 0
+            return self._nonactive_button()
         if self.stage == 'settle':
             return 0
         if self.stage is None:
@@ -117,6 +122,12 @@ class FeedbackController:
             self.dropping = True
             return self._drop_button(obs)
         return self.horizontal|rotation
+
+    def _nonactive_button(self):
+        # Count all calls routed to this profile, including default neutral0.
+        # Active settling/reaction/navigation/drop never call this method.
+        self.nonactive_input_frames += 1
+        return self.nonactive_input
 
     def transition(self,before,after):
         if self.stage == 'active' and before.phase == 1 and after.phase != 1:
@@ -168,4 +179,6 @@ class FeedbackController:
             reaction_frames=3,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
             horizontal_pulse_period=self.tap_period,rotation_period=4,
             no_softdrop_at_1g=self.no_softdrop_at_1g,
-            no_softdrop_levels=sorted(self.no_softdrop_levels))
+            no_softdrop_levels=sorted(self.no_softdrop_levels),
+            nonactive_input=self.nonactive_input,
+            nonactive_input_frames=self.nonactive_input_frames)
