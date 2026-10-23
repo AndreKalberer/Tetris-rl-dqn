@@ -33,6 +33,9 @@ def main():
                         help='Experimental neutral post-target input only at listed ordinary1G levels')
     parser.add_argument('--nonactive-input',choices=('neutral','down','left','right'),default='neutral',
                         help='Legal input during entry/clear/render phases; active controls stay separate')
+    parser.add_argument('--stall-rescue-input',choices=('neutral','down','left','right'),default='neutral',
+                        help='Optional legal input on unchanged nonactive public observations')
+    parser.add_argument('--stall-rescue-after',type=int,default=120)
     parser.add_argument('--transport',choices=('pipe','pipe-blocking','file'),default='pipe')
     parser.add_argument('--verification-transport',choices=('pipe','pipe-blocking','file'),
                         help='Optional separate transport for the fresh verification process')
@@ -60,6 +63,7 @@ def main():
     from nes_original.learn import Config, evaluate, load_policy, write_json
     from nes_original.mesen import MesenGame
     nonactive_input={'neutral':0,'down':32,'left':64,'right':128}[args.nonactive_input]
+    stall_rescue_input={'neutral':0,'down':32,'left':64,'right':128}[args.stall_rescue_input]
     model = None
     selector = None
     if args.selector == 'dellacherie':
@@ -90,6 +94,7 @@ def main():
         no_softdrop_at_1g=args.no_softdrop_at_1g,
         no_softdrop_levels=args.no_softdrop_levels,transport=args.transport,
         nonactive_input=args.nonactive_input,nonactive_input_byte=nonactive_input,
+        stall_rescue_input=args.stall_rescue_input,stall_rescue_after=args.stall_rescue_after,
         verification_transport=args.verification_transport or args.transport,
         stop_on_success=args.stop_on_success,
         selector_parameters=selector.stats() if selector and hasattr(selector, 'stats') else None,
@@ -238,6 +243,7 @@ def main():
                         no_softdrop_at_1g=args.no_softdrop_at_1g,
                         no_softdrop_levels=args.no_softdrop_levels,
                         nonactive_input=nonactive_input,
+                        stall_rescue_input=stall_rescue_input,stall_rescue_after=args.stall_rescue_after,
                         stop_on_success=args.stop_on_success)
         attained = any(row['success'] and row['exact_ram_rgb_replay'] for row in rows)
         status('complete', results=rows, target_verified=attained,

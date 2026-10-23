@@ -16,7 +16,8 @@ from nes_original.planner import proposals
 
 class FeedbackController:
     def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0,
-                 no_softdrop_at_1g=False, no_softdrop_levels=(), nonactive_input=0):
+                 no_softdrop_at_1g=False, no_softdrop_levels=(), nonactive_input=0,
+                 stall_rescue_input=0, stall_rescue_after=120):
         self.fixed_reaction,self.selector = fixed_reaction,selector
         self.context_selector = context_selector
         self.tap_period = tap_period
@@ -34,6 +35,15 @@ class FeedbackController:
             raise ValueError('Nonactive input must be one legal native button byte0,1,2,32,64,128')
         self.nonactive_input = int(nonactive_input)
         self.nonactive_input_frames = 0
+        if (isinstance(stall_rescue_input, bool) or not isinstance(stall_rescue_input, int)
+                or stall_rescue_input not in (0, 1, 2, 32, 64, 128)):
+            raise ValueError('Stall rescue input must be one legal native button byte0,1,2,32,64,128')
+        if (isinstance(stall_rescue_after, bool) or not isinstance(stall_rescue_after, int)
+                or not 1 <= stall_rescue_after <= 599):
+            raise ValueError('Stall rescue threshold must be an integer1..599 frames')
+        self.stall_rescue_input, self.stall_rescue_after = int(stall_rescue_input), stall_rescue_after
+        self.stall_rescue_attempts = self.stall_rescue_frames = 0
+        self._reset_stall_window()
         self.rules = ActionRules(horizontal_period=tap_period)
         self.stage = None
         self.idle = 0
@@ -69,12 +79,14 @@ class FeedbackController:
         return int(Buttons.DOWN)
 
     def command(self,obs):
+        if self.stall_rescue_input and obs.phase == 1:
+            self._reset_stall_window()
         if self.idle:
             self.idle -= 1
             self.extra_idle_frames += 1
-            return self._nonactive_button() if obs.phase != 1 else 0
+            return self._nonactive_button(obs) if obs.phase != 1 else 0
         if obs.phase != 1:
-            return self._nonactive_button()
+            return self._nonactive_button(obs)
         if self.stage == 'settle':
             return 0
         if self.stage is None:
@@ -123,10 +135,50 @@ class FeedbackController:
             return self._drop_button(obs)
         return self.horizontal|rotation
 
-    def _nonactive_button(self):
+    def _reset_stall_window(self):
+        self._stall_key = self._stall_start_frame = self._stall_last_frame = None
+        self._stall_activated = False
+        self._stall_last_rescue_frame = None
+
+    def _stall_button(self, obs):
+        """Legal timing strategy on unchanged public state, not a crash verdict."""
+        frame = getattr(obs, 'frames', None)
+        if isinstance(frame, bool) or not isinstance(frame, int) or frame < 0:
+            self._reset_stall_window()
+            return None
+        try:
+            key = (obs.phase, obs.orientation, obs.x, obs.y, obs.level, obs.lines,
+                   obs.placements, obs.score, obs.board.tobytes())
+        except (AttributeError, TypeError, ValueError):
+            self._reset_stall_window()
+            return None
+        if self._stall_last_frame is not None and frame < self._stall_last_frame:
+            self._reset_stall_window()
+            return None
+        if key != self._stall_key:
+            self._reset_stall_window()
+            self._stall_key = key
+            self._stall_start_frame = self._stall_last_frame = frame
+            return None
+        self._stall_last_frame = frame
+        if frame-self._stall_start_frame < self.stall_rescue_after:
+            return None
+        if not self._stall_activated:
+            self._stall_activated = True
+            self.stall_rescue_attempts += 1
+        if frame != self._stall_last_rescue_frame:
+            self.stall_rescue_frames += 1
+            self._stall_last_rescue_frame = frame
+        return self.stall_rescue_input
+
+    def _nonactive_button(self, obs):
         # Count all calls routed to this profile, including default neutral0.
         # Active settling/reaction/navigation/drop never call this method.
         self.nonactive_input_frames += 1
+        if self.stall_rescue_input:
+            rescue = self._stall_button(obs)
+            if rescue is not None:
+                return rescue
         return self.nonactive_input
 
     def transition(self,before,after):
@@ -181,4 +233,8 @@ class FeedbackController:
             no_softdrop_at_1g=self.no_softdrop_at_1g,
             no_softdrop_levels=sorted(self.no_softdrop_levels),
             nonactive_input=self.nonactive_input,
-            nonactive_input_frames=self.nonactive_input_frames)
+            nonactive_input_frames=self.nonactive_input_frames,
+            stall_rescue_input=self.stall_rescue_input,
+            stall_rescue_after=self.stall_rescue_after,
+            stall_rescue_attempts=self.stall_rescue_attempts,
+            stall_rescue_frames=self.stall_rescue_frames)

@@ -348,7 +348,8 @@ def load_policy(path):
 
 def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None,
              game_factory=OriginalGame,target_level=30,context_selector=None,no_softdrop_at_1g=False,
-             stop_on_success=False,no_softdrop_levels=(),nonactive_input=0):
+             stop_on_success=False,no_softdrop_levels=(),nonactive_input=0,
+             stall_rescue_input=0,stall_rescue_after=120):
     """Reach a native level from18 at a settled controller boundary and replay.
 
     target_level255 means reaching255, not clearing it or certifying rebirth.
@@ -382,6 +383,7 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
             no_softdrop_at_1g=no_softdrop_at_1g,
             no_softdrop_levels=no_softdrop_levels,
             nonactive_input=nonactive_input,
+            stall_rescue_input=stall_rescue_input,stall_rescue_after=stall_rescue_after,
             context_selector=context_selector if context_selector is not None else
                 ((lambda obs,plan: values(model,encoder(obs,plan)).argmax()) if model else
                  (lambda obs,plan: encoder(obs,plan)[:,-1].argmax())))
