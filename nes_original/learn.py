@@ -348,7 +348,7 @@ def load_policy(path):
 
 def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None,
              game_factory=OriginalGame,target_level=30,context_selector=None,no_softdrop_at_1g=False,
-             stop_on_success=False):
+             stop_on_success=False,no_softdrop_levels=()):
     """Reach a native level from18 at a settled controller boundary and replay.
 
     target_level255 means reaching255, not clearing it or certifying rebirth.
@@ -368,6 +368,10 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
         raise ValueError('no_softdrop_at_1g must be a boolean control-profile choice')
     if not isinstance(stop_on_success,bool):
         raise ValueError('stop_on_success must be a boolean')
+    try:
+        no_softdrop_levels=tuple(no_softdrop_levels)
+    except TypeError as exc:
+        raise ValueError('no_softdrop_levels must be an iterable of levels') from exc
     from nes_original.mesen import SuspectedCrash
     from nes_original.progression import MarathonProgress
     config=config or getattr(model,'feature_config',None) or Config()
@@ -376,6 +380,7 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
     for seed in seeds:
         controller = FeedbackController(fixed_reaction=not runtime,tap_period=config.tap_period,
             no_softdrop_at_1g=no_softdrop_at_1g,
+            no_softdrop_levels=no_softdrop_levels,
             context_selector=context_selector if context_selector is not None else
                 ((lambda obs,plan: values(model,encoder(obs,plan)).argmax()) if model else
                  (lambda obs,plan: encoder(obs,plan)[:,-1].argmax())))

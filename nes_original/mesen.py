@@ -5,6 +5,7 @@ beside it. No downloads/installs are performed. Each inputPolled callback stops
 before submitting the next input; step supplies that input and waits for the
 next callback. This has no nes-py-style pending-input frame (input_pipeline=0).
 Named-pipe IPC is the default; transport='file' retains the tested fallback.
+transport='pipe-blocking' opts into cancellable, watchdog-bounded blocking reads.
 These are bounded reference interfaces, not a high-throughput training service.
 CPU/PPU/hardware parity and full late-game crash behavior remain separate tests.
 """
@@ -45,10 +46,12 @@ class MesenObservation(Observation):
 class _WindowsPipes:
     """Two byte-stream pipes, each with one writer and one reader.
 
-    Server reads are polled only after PeekNamedPipe reports available data;
-    no Python call blocks indefinitely. Lua uses ordinary blocking stdio.
+    Default server reads use PeekNamedPipe polling. The opt-in blocking reader
+    uses registered synchronous IO, repeated cancellation, and the independent
+    owner-process watchdog; connection and command writes remain nonblocking.
+    Lua uses ordinary blocking stdio in both modes.
     """
-    def __init__(self):
+    def __init__(self, *, blocking=False):
         import ctypes as c
         self.c = c
         self.k = k = c.WinDLL('kernel32', use_last_error=True)
@@ -66,6 +69,21 @@ class _WindowsPipes:
             fn.restype = c.c_int
         k.CloseHandle.argtypes = [c.c_void_p]
         k.CloseHandle.restype = c.c_int
+        self.blocking = blocking
+        self._read_lock = threading.Lock()
+        self._read_done = threading.Event()
+        self._read_done.set()
+        self._read_pending = self._aborted = False
+        self._read_thread = self._read_thread_id = None
+        self._read_thread_owner = None
+        self.cancel_error = None
+        if blocking:
+            k.SetNamedPipeHandleState.argtypes = [c.c_void_p,c.POINTER(c.c_uint32),c.c_void_p,c.c_void_p]
+            k.SetNamedPipeHandleState.restype = c.c_int
+            k.OpenThread.argtypes = [c.c_uint32,c.c_int,c.c_uint32]
+            k.OpenThread.restype = c.c_void_p
+            k.CancelSynchronousIo.argtypes = [c.c_void_p]
+            k.CancelSynchronousIo.restype = c.c_int
         token = uuid.uuid4().hex
         self.to_lua = '\\\\.\\pipe\\nes-ref-' + token + '-in'
         self.from_lua = '\\\\.\\pipe\\nes-ref-' + token + '-out'
@@ -73,6 +91,9 @@ class _WindowsPipes:
         self.buffer = b''
         try:
             for name,access in ((self.from_lua,1),(self.to_lua,2)):
+                # Duplex access grants mode-change rights on the receiving
+                # server handle; protocol IO remains one reader/one writer.
+                if blocking and access==1: access = 3  # PIPE_ACCESS_DUPLEX
                 handle = k.CreateNamedPipeW(name,access,1,1,65536,65536,0,None)
                 if handle == c.c_void_p(-1).value: raise c.WinError(c.get_last_error())
                 self.handles.append(handle)
@@ -91,6 +112,10 @@ class _WindowsPipes:
             if process.poll() is not None: raise MesenFault('Mesen exited while connecting IPC')
             if pending: time.sleep(.001)
         if pending: raise MesenFault('Named-pipe connection timeout')
+        if self.blocking:
+            mode = self.c.c_uint32(0)  # PIPE_READMODE_BYTE | PIPE_WAIT; writer stays NOWAIT.
+            if not self.k.SetNamedPipeHandleState(self.handles[0],self.c.byref(mode),None,None):
+                raise self.c.WinError(self.c.get_last_error())
 
     def send(self, text):
         data = (text+'\n').encode('ascii')
@@ -100,6 +125,8 @@ class _WindowsPipes:
         if count.value != len(data): raise MesenFault('Partial controller command write')
 
     def receive(self):
+        if self.blocking:
+            return self._receive_blocking()
         if b'\n' not in self.buffer:
             available = self.c.c_uint32()
             if not self.k.PeekNamedPipe(self.handles[0],None,0,None,self.c.byref(available),None):
@@ -115,7 +142,69 @@ class _WindowsPipes:
             return json.loads(line)
         return None
 
+    def _receive_blocking(self):
+        # ctypes.WinDLL releases the GIL during ReadFile, so the independent
+        # Mesen watchdog can kill its owned child and cancel this exact thread.
+        with self._read_lock:
+            if self._aborted: raise self.c.WinError(995)
+        while b'\n' not in self.buffer:
+            with self._read_lock:
+                if self._aborted: raise self.c.WinError(995)  # ERROR_OPERATION_ABORTED
+                if self._read_pending: raise MesenFault('Concurrent pipe reads are unsupported')
+                thread_id = threading.get_native_id()
+                owner = threading.current_thread()
+                if thread_id != self._read_thread_id or owner is not self._read_thread_owner:
+                    if self._read_thread is not None: self.k.CloseHandle(self._read_thread)
+                    self._read_thread = self.k.OpenThread(1,False,thread_id)  # THREAD_TERMINATE
+                    if not self._read_thread: raise self.c.WinError(self.c.get_last_error())
+                    self._read_thread_id = thread_id
+                    self._read_thread_owner = owner
+                handle = self.handles[0]
+                self._read_pending = True
+                self._read_done.clear()
+            try:
+                count = self.c.c_uint32()
+                buf = self.c.create_string_buffer(65536)
+                if not self.k.ReadFile(handle,buf,len(buf),self.c.byref(count),None):
+                    raise self.c.WinError(self.c.get_last_error())
+                if not count.value: raise self.c.WinError(109)  # ERROR_BROKEN_PIPE
+                if self._aborted: raise self.c.WinError(995)
+                self.buffer += buf.raw[:count.value]
+                if len(self.buffer)>1024*1024:
+                    raise MesenFault('Named-pipe response exceeds bounded message size')
+            finally:
+                with self._read_lock:
+                    self._read_pending = False
+                    self._read_done.set()
+        line,self.buffer = self.buffer.split(b'\n',1)
+        return json.loads(line)
+
+    def abort_read(self):
+        """Permanently abort this session's read; never cancel another thread's work."""
+        if not self.blocking: return
+        deadline = time.monotonic()+2
+        while True:
+            with self._read_lock:
+                self._aborted = True
+                handle = self._read_thread if self._read_pending else None
+                # Hold the lock through cancellation: the reader cannot leave
+                # finally and start unrelated IO on the registered thread.
+                if handle is not None and not self.k.CancelSynchronousIo(handle):
+                    error = self.c.get_last_error()
+                    if error!=1168: self.cancel_error = error  # ERROR_NOT_FOUND is a completion race.
+            if self._read_done.wait(.01): return
+            # A one-shot cancel can race before native ReadFile entry. Repeat
+            # while registered; owned-child termination also closes the peer.
+            if time.monotonic()>=deadline:
+                raise MesenFault('Blocking pipe read did not cancel; active handle retained')
+
     def close(self):
+        if self.blocking:
+            self.abort_read()
+            if self._read_thread is not None:
+                self.k.CloseHandle(self._read_thread)
+                self._read_thread = self._read_thread_id = None
+                self._read_thread_owner = None
         for handle in self.handles: self.k.CloseHandle(handle)
         self.handles = []
 
@@ -158,7 +247,8 @@ class MesenGame:
             raise ValueError('Require action_timeout>=2, larger process_timeout and watchdog_frames>=60')
         self.action_timeout, self.process_timeout = int(action_timeout), int(process_timeout)
         self.watchdog_frames, self.affinity = int(watchdog_frames), affinity
-        if transport not in ('file','pipe'): raise ValueError('Choose file or pipe IPC')
+        if transport not in ('file','pipe','pipe-blocking'):
+            raise ValueError('Choose file, pipe or pipe-blocking IPC')
         self.transport = transport
         self._pipes = None
         self._idle_stop = None
@@ -234,8 +324,8 @@ class MesenGame:
         self.session_dir.mkdir(parents=True, exist_ok=False)
         entry = self.session_dir / 'entry.lua'
         pipe_config = ''
-        if self.transport == 'pipe':
-            self._pipes = _WindowsPipes()
+        if self.transport in ('pipe','pipe-blocking'):
+            self._pipes = _WindowsPipes(blocking=self.transport=='pipe-blocking')
             pipe_config = 'MESEN_BRIDGE_PIPE_IN=' + json.dumps(self._pipes.to_lua) + '\n'
             pipe_config += 'MESEN_BRIDGE_PIPE_OUT=' + json.dumps(self._pipes.from_lua) + '\n'
         entry.write_text('MESEN_BRIDGE_ROOT=' + json.dumps(self.session_dir.as_posix() + '/') + '\n'
@@ -262,7 +352,7 @@ class MesenGame:
             self._idle_expired = False
             self._process_expired = False
             self._idle_stop = threading.Event()
-            process,stop = self._process,self._idle_stop
+            process,stop,pipes = self._process,self._idle_stop,self._pipes
             process_deadline = time.monotonic()+self.process_timeout
             def idle_watchdog():
                 while not stop.wait(.1):
@@ -270,10 +360,12 @@ class MesenGame:
                     if time.monotonic()>process_deadline:
                         self._process_expired = True
                         process.kill()
+                        pipes.abort_read()
                         return
                     if time.monotonic()>self._idle_deadline:
                         self._idle_expired = True
                         process.kill()
+                        pipes.abort_read()
                         return
             self._idle_thread = threading.Thread(target=idle_watchdog,daemon=True)
             self._idle_thread.start()
@@ -496,7 +588,9 @@ class MesenGame:
         if self._idle_stop is not None:
             self._idle_stop.set()
         if self._idle_thread is not None:
-            self._idle_thread.join(timeout=1)
+            self._idle_thread.join(timeout=3 if self.transport=='pipe-blocking' else 1)
+            if self.transport=='pipe-blocking' and self._idle_thread.is_alive():
+                raise MesenFault('Blocking pipe watchdog did not exit within its cancellation bound')
             self._idle_thread = None
         self._idle_stop = None
         if self._process is not None:

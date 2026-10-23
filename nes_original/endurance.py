@@ -29,6 +29,11 @@ def main():
     parser.add_argument('--policy', type=Path)
     parser.add_argument('--no-softdrop-at-1g',action='store_true',
                         help='Experimental controller timing: omit Down during ordinary1G fall')
+    parser.add_argument('--no-softdrop-levels',type=int,nargs='*',default=[],
+                        help='Experimental neutral post-target input only at listed ordinary1G levels')
+    parser.add_argument('--transport',choices=('pipe','pipe-blocking','file'),default='pipe')
+    parser.add_argument('--verification-transport',choices=('pipe','pipe-blocking','file'),
+                        help='Optional separate transport for the fresh verification process')
     parser.add_argument('--stop-on-success',action='store_true',
                         help='End the development suite after the first fully verified target')
     parser.add_argument('--selector', choices=('retained-prior', 'dellacherie', 'risk-aware',
@@ -80,6 +85,8 @@ def main():
         max_frames_per_game=args.max_frames, source_files=source_hashes,
         runtime_latency_charged=True, config=asdict(config), selector=args.selector,
         no_softdrop_at_1g=args.no_softdrop_at_1g,
+        no_softdrop_levels=args.no_softdrop_levels,transport=args.transport,
+        verification_transport=args.verification_transport or args.transport,
         stop_on_success=args.stop_on_success,
         selector_parameters=selector.stats() if selector and hasattr(selector, 'stats') else None,
         planner_cpu_mask=args.cpu_mask,
@@ -101,7 +108,9 @@ def main():
         def __init__(self, role):
             super().__init__(executable=args.mesen, session_root=output/'reference-sessions',
                              affinity=args.emulator_cpu_mask, action_timeout=60,
-                             process_timeout=args.process_timeout)
+                             process_timeout=args.process_timeout,
+                             transport=(args.verification_transport or args.transport)
+                                if role=='verification' else args.transport)
             self.role = role
             self.last_journal_length = 0
             self.journal_fault = None
@@ -223,6 +232,7 @@ def main():
                         max_frames=args.max_frames, target_level=args.target_level, game_factory=factory,
                         context_selector=log_alert_selection if args.selector=='dellacherie-alerts' else selector,
                         no_softdrop_at_1g=args.no_softdrop_at_1g,
+                        no_softdrop_levels=args.no_softdrop_levels,
                         stop_on_success=args.stop_on_success)
         attained = any(row['success'] and row['exact_ram_rgb_replay'] for row in rows)
         status('complete', results=rows, target_verified=attained,

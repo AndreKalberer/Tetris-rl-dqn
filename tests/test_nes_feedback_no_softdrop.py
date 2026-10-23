@@ -14,9 +14,9 @@ def observation(level=29, soft=0, fall=0):
         previous=0, level=level, soft=soft, fall=fall)
 
 
-def prepared(obs, flag=False, route='dropping'):
+def prepared(obs, flag=False, route='dropping', levels=()):
     controller = FeedbackController(fixed_reaction=True, tap_period=2,
-        no_softdrop_at_1g=flag)
+        no_softdrop_at_1g=flag, no_softdrop_levels=levels)
     plan = None if route == 'dropping' else SimpleNamespace(actions=SimpleNamespace(
         controls=[SimpleNamespace(x=obs.x, orientation=obs.orientation)]))
     controller.start_plan(obs, plan, 0)
@@ -25,6 +25,32 @@ def prepared(obs, flag=False, route='dropping'):
 
 
 class NoSoftDropTests(unittest.TestCase):
+    def test_selected_level_only_preserves_other_profiles_and_counter_guards(self):
+        for route in ('dropping', 'navigation_limit', 'target_reached'):
+            for level in (0, 28, 29, 155, 157, 158, 159, 160, 255):
+                for soft in (0, 2, 127, 128, 160):
+                    for fall in (0, 127, 128, 255):
+                        obs = observation(level, soft, fall)
+                        actual = prepared(obs, route=route, levels=[159]).command(obs)
+                        expected = 0 if level == 159 and soft < 128 and fall <= 127 else int(Buttons.DOWN)
+                        self.assertEqual(actual, expected)
+                        # Broad opt-in remains broad even with a narrow list.
+                        broad = prepared(obs, True, route, levels=[159]).command(obs)
+                        reference = prepared(obs, True, route).command(obs)
+                        self.assertEqual(broad, reference)
+
+    def test_selected_levels_validate_freeze_deduplicate_and_report_sorted(self):
+        self.assertEqual(FeedbackController().stats()['no_softdrop_levels'], [])
+        levels = [255, 159, 29, 159]
+        controller = FeedbackController(no_softdrop_levels=levels)
+        levels.append(155)
+        self.assertEqual(controller.stats()['no_softdrop_levels'], [29, 159, 255])
+        self.assertFalse(controller.stats()['no_softdrop_at_1g'])
+        self.assertEqual(FeedbackController(no_softdrop_levels=iter([159])).stats()['no_softdrop_levels'], [159])
+        for invalid in (None, 159, '159', [True], [False], [159.0], ['159'], [28], [256], [-1]):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                FeedbackController(no_softdrop_levels=invalid)
+
     def test_opt_in_boundaries_preserve_defaults_and_initial_negative_timer(self):
         for route in ('dropping', 'navigation_limit', 'target_reached'):
             for level in (0, 18, 28, 29, 138, 255):

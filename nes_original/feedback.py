@@ -16,11 +16,19 @@ from nes_original.planner import proposals
 
 class FeedbackController:
     def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0,
-                 no_softdrop_at_1g=False):
+                 no_softdrop_at_1g=False, no_softdrop_levels=()):
         self.fixed_reaction,self.selector = fixed_reaction,selector
         self.context_selector = context_selector
         self.tap_period = tap_period
         self.no_softdrop_at_1g = bool(no_softdrop_at_1g)
+        try:
+            levels = tuple(no_softdrop_levels)
+        except TypeError as error:
+            raise ValueError('No-softdrop levels must be an iterable of integers29..255') from error
+        if any(isinstance(level, bool) or not isinstance(level, int) or not 29 <= level <= 255
+               for level in levels):
+            raise ValueError('No-softdrop levels must be integers29..255; booleans are excluded')
+        self.no_softdrop_levels = frozenset(levels)
         self.rules = ActionRules(horizontal_period=tap_period)
         self.stage = None
         self.idle = 0
@@ -49,7 +57,8 @@ class FeedbackController:
         # 0xFF), because Down cancels that timer and can change vertical motion.
         # Restrict this to ordinary fall-byte values too: the ROM's signed
         # comparison can skip natural gravity after a byte wrap/high value.
-        if (self.no_softdrop_at_1g and obs.level >= 29 and 0 <= obs.soft < 128
+        enabled = self.no_softdrop_at_1g or obs.level in self.no_softdrop_levels
+        if (enabled and obs.level >= 29 and 0 <= obs.soft < 128
                 and 0 <= obs.fall <= 127):
             return 0
         return int(Buttons.DOWN)
@@ -158,4 +167,5 @@ class FeedbackController:
             action_interface='Native feedback targets; approximate proposal features',
             reaction_frames=3,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
             horizontal_pulse_period=self.tap_period,rotation_period=4,
-            no_softdrop_at_1g=self.no_softdrop_at_1g)
+            no_softdrop_at_1g=self.no_softdrop_at_1g,
+            no_softdrop_levels=sorted(self.no_softdrop_levels))
