@@ -440,7 +440,21 @@ class MesenGame:
         temporary.write_text(json.dumps(self.replay(), indent=2)+'\n', encoding='utf-8')
         temporary.replace(path)
 
-    def load_replay(self, data, *, callback=None):
+    def load_replay(self, data, *, callback=None, expected_fault=None):
+        """Reconstruct exact input/state evidence, optionally including a final fault.
+
+        expected_fault is an explicit caller-supplied mapping with type
+        'SuspectedCrash' and one existing watchdog reason. It accepts that exact
+        fault only on the final recorded input, after full input/result/RAM/RGB/
+        clock comparisons. This verifies a fault trace, never a gameplay goal.
+        Without this argument watchdog exceptions retain their normal behavior.
+        """
+        if expected_fault is not None:
+            reasons = {'rom_nmi_counter_stalled','gameplay_state_stalled','unexpected_exit_from_gameplay'}
+            if (not isinstance(expected_fault,dict) or set(expected_fault)!={'type','reason'} or
+                    expected_fault['type']!='SuspectedCrash' or
+                    not isinstance(expected_fault['reason'],str) or expected_fault['reason'] not in reasons):
+                raise ValueError('Expected an explicit SuspectedCrash type and recognized watchdog reason')
         if data['protocol'] != PROTOCOL or data['rom_sha256'] != self.rom_sha256 or data['identity'] != self.identity:
             raise ValueError('Replay game, core executable, bridge or settings profile differs')
         self.reset(start_level=data['start_level'], seed=data['menu_wait_seed'])
@@ -449,12 +463,27 @@ class MesenGame:
         if bytes(self.inputs) != inputs[:boot_length] or self.start_frame != data['start_frame']:
             raise ValueError('Boot controller trace did not reproduce')
         if callback: callback(self)
-        for buttons in inputs[boot_length:]:
-            self.step(buttons)
+        fault_seen = False
+        for index,buttons in enumerate(inputs[boot_length:],start=boot_length):
+            try:
+                self.step(buttons)
+            except SuspectedCrash as exc:
+                if expected_fault is None:
+                    raise
+                reason = str(exc).partition('; diagnostics=')[0]
+                if (type(exc) is not SuspectedCrash or reason!=expected_fault['reason'] or
+                        index!=len(inputs)-1 or len(self.inputs)!=len(inputs)):
+                    raise ValueError('Replay fault type, reason or final input position differs') from exc
+                fault_seen = True
             if callback: callback(self)
+        if expected_fault is not None and not fault_seen:
+            raise ValueError('Expected replay fault did not occur on the final recorded input')
         actual = self.replay()
         if actual['fingerprint'] != data['fingerprint'] or actual['result'] != data['result']:
             raise ValueError('Replay diverged from recorded RAM, RGB, clock or game result')
+        if expected_fault is not None and (bytes(self.inputs)!=inputs or
+                actual['input_hex']!=data['input_hex'] or self.placements!=data['placements']):
+            raise ValueError('Fault replay input journal or placement count differs')
         return self.observe()
 
     def snapshot(self):

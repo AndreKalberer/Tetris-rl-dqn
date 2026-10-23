@@ -347,7 +347,8 @@ def load_policy(path):
 
 
 def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None,
-             game_factory=OriginalGame,target_level=30,context_selector=None):
+             game_factory=OriginalGame,target_level=30,context_selector=None,no_softdrop_at_1g=False,
+             stop_on_success=False):
     """Reach a native level from18 at a settled controller boundary and replay.
 
     target_level255 means reaching255, not clearing it or certifying rebirth.
@@ -363,18 +364,25 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
         raise ValueError('max_frames must be a positive integer gameplay-frame budget')
     if context_selector is not None and (model is not None or not callable(context_selector)):
         raise ValueError('context_selector must be callable and cannot be combined with a model')
+    if not isinstance(no_softdrop_at_1g,bool):
+        raise ValueError('no_softdrop_at_1g must be a boolean control-profile choice')
+    if not isinstance(stop_on_success,bool):
+        raise ValueError('stop_on_success must be a boolean')
+    from nes_original.mesen import SuspectedCrash
     from nes_original.progression import MarathonProgress
     config=config or getattr(model,'feature_config',None) or Config()
     encoder=FeatureEncoder(config) if context_selector is None else None
     rows = []
     for seed in seeds:
         controller = FeedbackController(fixed_reaction=not runtime,tap_period=config.tap_period,
+            no_softdrop_at_1g=no_softdrop_at_1g,
             context_selector=context_selector if context_selector is not None else
                 ((lambda obs,plan: values(model,encoder(obs,plan)).argmax()) if model else
                  (lambda obs,plan: encoder(obs,plan)[:,-1].argmax())))
         with game_factory() as game:
             o = game.reset(start_level=18,seed=int(seed))
             error = None
+            observed_fault = None
             peak_level = o.level
             target_reached = False
             progress = MarathonProgress(18,0,o.placements)
@@ -396,6 +404,8 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
                             (progress.level_cycles==0 and 3290<=progress.absolute_lines<=3293))
                 except (AssertionError,RuntimeError) as exc:
                     error = str(exc)
+                    if type(exc) is SuspectedCrash:
+                        observed_fault = dict(type='SuspectedCrash',reason=str(exc).split(';',1)[0])
                     # Both native backends expose a non-advancing observation.
                     # A transition may fail after a successful frame; retain
                     # that latest cached/native state without stepping again.
@@ -409,7 +419,11 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
             case_path = Path(output)/f'seed-{seed}-case.json'
             row = dict(seed=int(seed),level=o.level,lines=o.lines,score=o.score,backend=backend,
                 placements=o.placements,success=False,
-                over=o.over,error=error,censored=not o.over and not target_reached,
+                over=o.over,error=error,censored=not o.over and not target_reached and error is None,
+                observed_fault=observed_fault,fault_reproduced=False,
+                termination_kind=('suspected_original_crash' if observed_fault else
+                    'controller_error' if error else 'top_out' if o.over else
+                    'target_reached' if target_reached else 'frame_limit'),
                 exact_ram_rgb_replay=False,controller=controller.stats(),
                 case_state='verification_pending',start_level=18,target_level=target_level,
                 target_reached=target_reached,peak_level=peak_level,
@@ -421,6 +435,8 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
             write_json(case_path,row)
             try:
                 record = game.replay()
+                if observed_fault:
+                    record['observed_fault'] = observed_fault
                 write_json(path,record)
             except Exception as exc:
                 row.update(case_state='verification_failed',verification_error=repr(exc),
@@ -432,17 +448,22 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
                 raise
         try:
             with game_factory() as other:
-                other.load_replay(record)
+                if observed_fault:
+                    other.load_replay(record,expected_fault=observed_fault)
+                else:
+                    other.load_replay(record)
         except Exception as exc:
             row.update(case_state='verification_failed',verification_error=repr(exc),
                        verification_failure_phase='fresh_replay')
             write_json(case_path,row)
             raise
         row.update(case_state='verified',exact_ram_rgb_replay=True,
-                   success=target_reached and not error)
+                   success=target_reached and not error,fault_reproduced=observed_fault is not None)
         write_json(case_path,row)
         rows.append(row)
         write_json(Path(output)/'results.json',rows)
+        if stop_on_success and row['success']:
+            break
     write_json(Path(output)/'results.json',rows)
     return rows
 

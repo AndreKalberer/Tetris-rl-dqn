@@ -27,6 +27,10 @@ def main():
     parser.add_argument('--emulator-cpu-mask', type=lambda value: int(value, 0), default=128)
     parser.add_argument('--process-timeout', type=int, default=21600)
     parser.add_argument('--policy', type=Path)
+    parser.add_argument('--no-softdrop-at-1g',action='store_true',
+                        help='Experimental controller timing: omit Down during ordinary1G fall')
+    parser.add_argument('--stop-on-success',action='store_true',
+                        help='End the development suite after the first fully verified target')
     parser.add_argument('--selector', choices=('retained-prior', 'dellacherie', 'risk-aware'), default='retained-prior')
     args = parser.parse_args()
     if not 19 <= args.target_level <= 255 or args.max_frames < 1:
@@ -71,6 +75,8 @@ def main():
         start_level=18, target_level=args.target_level, menu_waits=args.seeds,
         max_frames_per_game=args.max_frames, source_files=source_hashes,
         runtime_latency_charged=True, config=asdict(config), selector=args.selector,
+        no_softdrop_at_1g=args.no_softdrop_at_1g,
+        stop_on_success=args.stop_on_success,
         selector_parameters=selector.stats() if selector and hasattr(selector, 'stats') else None,
         planner_cpu_mask=args.cpu_mask,
         emulator_cpu_mask=args.emulator_cpu_mask, process_timeout_seconds=args.process_timeout,
@@ -160,7 +166,8 @@ def main():
     try:
         rows = evaluate(model, output/'cases', seeds=args.seeds, runtime=True, config=config,
                         max_frames=args.max_frames, target_level=args.target_level, game_factory=factory,
-                        context_selector=selector)
+                        context_selector=selector,no_softdrop_at_1g=args.no_softdrop_at_1g,
+                        stop_on_success=args.stop_on_success)
         attained = any(row['success'] and row['exact_ram_rgb_replay'] for row in rows)
         status('complete', results=rows, target_verified=attained,
                selector_statistics=selector.stats() if selector and hasattr(selector, 'stats') else None)

@@ -15,10 +15,12 @@ from nes_original.planner import proposals
 
 
 class FeedbackController:
-    def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0):
+    def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0,
+                 no_softdrop_at_1g=False):
         self.fixed_reaction,self.selector = fixed_reaction,selector
         self.context_selector = context_selector
         self.tap_period = tap_period
+        self.no_softdrop_at_1g = bool(no_softdrop_at_1g)
         self.rules = ActionRules(horizontal_period=tap_period)
         self.stage = None
         self.idle = 0
@@ -39,6 +41,18 @@ class FeedbackController:
         self.dropping = plan is None
         self.stage = 'active'
         self.above_board = False
+
+    def _drop_button(self, obs):
+        # At ordinary1G, gravity already advances each frame. This optional
+        # input variation removes push-down points; it does not patch physics.
+        # Retain Down while the signed initial soft timer is negative (0x80..
+        # 0xFF), because Down cancels that timer and can change vertical motion.
+        # Restrict this to ordinary fall-byte values too: the ROM's signed
+        # comparison can skip natural gravity after a byte wrap/high value.
+        if (self.no_softdrop_at_1g and obs.level >= 29 and 0 <= obs.soft < 128
+                and 0 <= obs.fall <= 127):
+            return 0
+        return int(Buttons.DOWN)
 
     def command(self,obs):
         if self.idle:
@@ -75,7 +89,7 @@ class FeedbackController:
             self.dropping = True
         if navigation >= 48 or self.dropping:
             self.dropping = True
-            return int(Buttons.DOWN)
+            return self._drop_button(obs)
         # Horizontal changes at most once every six native frames. Rotation
         # pulses at most once every four. Own pending input must settle before
         # treating a target as reached. All remaining physics are original code.
@@ -92,7 +106,7 @@ class FeedbackController:
         if (obs.x == self.target_x and obs.orientation == self.target_orientation
                 and not self.horizontal and not obs.pending&3 and not obs.previous&3):
             self.dropping = True
-            return int(Buttons.DOWN)
+            return self._drop_button(obs)
         return self.horizontal|rotation
 
     def transition(self,before,after):
@@ -143,4 +157,5 @@ class FeedbackController:
             piece_type_differences=self.piece_type_differences,
             action_interface='Native feedback targets; approximate proposal features',
             reaction_frames=3,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
-            horizontal_pulse_period=self.tap_period,rotation_period=4)
+            horizontal_pulse_period=self.tap_period,rotation_period=4,
+            no_softdrop_at_1g=self.no_softdrop_at_1g)
