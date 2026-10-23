@@ -16,16 +16,27 @@ def main():
     parser.add_argument('--video-frames',type=int,default=1800)
     parser.add_argument('--video-start-frame',type=int,default=1)
     parser.add_argument('--mesen',type=Path,help='Portable MesenCE executable for reference-core journals')
+    parser.add_argument('--watchdog-frames',type=int,
+        help='Mesen-only host stall threshold (minimum60, default600); recovery traces may need3600')
+    parser.add_argument('--transport',choices=('file','pipe','pipe-blocking'),
+        help='Mesen-only IPC transport (default pipe); does not change recorded inputs or emulated timing')
     args = parser.parse_args()
     if args.video_start_frame<1:
         parser.error('--video-start-frame must be positive')
+    if args.watchdog_frames is not None and args.watchdog_frames<60:
+        parser.error('--watchdog-frames must be at least60, matching the Mesen host watchdog')
     record = json.loads(args.replay.read_text(encoding='utf-8'))
     factory=OriginalGame
     if 'mesence' in record.get('protocol',''):
         if not args.mesen:
             parser.error('This reference replay needs --mesen with its recorded portable build')
         from nes_original.mesen import MesenGame
-        factory=lambda:MesenGame(executable=args.mesen,session_root=args.replay.parent/'reference-replay-sessions',transport='pipe')
+        factory=lambda:MesenGame(executable=args.mesen,
+            session_root=args.replay.parent/'reference-replay-sessions',
+            transport=args.transport if args.transport is not None else 'pipe',
+            watchdog_frames=args.watchdog_frames if args.watchdog_frames is not None else 600)
+    elif args.watchdog_frames is not None or args.transport is not None:
+        parser.error('--watchdog-frames and --transport require a Mesen reference replay and --mesen')
     writer = None
     frames = 0
     if args.video:
