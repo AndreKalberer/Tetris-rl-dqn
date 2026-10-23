@@ -38,6 +38,21 @@ not a fresh full proof or a controller-state checkpoint. Fault journals retain
 raw RAM even when corrupted counters cannot be decoded. Source, policy,
 controller profile, core and ROM identity must remain recorded with each run.
 
+`--selector dellacherie-alerts` prioritizes proposals outside four documented
+conditional crash signatures. It is not a complete safe-action map. Logs retain
+alerts and forced fallbacks. `--no-softdrop-levels 159` enables a separate timing
+experiment only at that raw level, retaining the ordinary soft/fall-byte guards.
+Neither option guarantees that the original ROM will avoid a crash.
+
+`--transport pipe-blocking --verification-transport pipe` opts into faster,
+watchdog-bounded gameplay IPC with a separate fresh reconstruction through the
+original polling transport. The default remains polling. Seven Windows IPC
+safety cases and paired native proofs passed before this option was exposed;
+one480-frame benchmark measured1.58x throughput, not stronger play. The bridge,
+ROM, controller validity and emulated CPU/PPU timing stay authoritative.
+`--stop-on-success` ends a development suite after its first fully verified
+target; all earlier failures remain in the result list.
+
 Keep old simulator pilots, failed native runs, stopped-at30 trials and frozen
 selection studies intact. Development endurance on known starts supplies no
 untouched20-game acceptance result and no learned-improvement claim. The original
