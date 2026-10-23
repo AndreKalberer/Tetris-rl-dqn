@@ -1,3 +1,13 @@
+October 23, 12:12 PM Denver — process inventory correction (takes precedence)
+
+An authoritative all-worker inventory revealed that the old Right-only trial HAD launched: launcher 29532, actual PID 21520, frozen 337af4b, CPU 0 / Mesen 8. Earlier notes calling it unlaunched/superseded were wrong. Preserve its launch manifest and active suite; do not duplicate it. Its start 33 reached level 167 / 1,613 lines and then rom_nmi_counter_stalled; fresh verification is running, so this specific failure is not yet fully proven. It recorded 11 rescue activations / 1,404 rescue frames. This is distinct from the separately verified level 167 recovery diagnostic.
+
+The new Right/A v1 accidentally shared CPU 0/8 with that live job. Root stopped ONLY the positively identified new v1 worker 29084, its owned emulator 15852 and launcher 26940 at 12:11 PM. Its journal and resource-abort.json are preserved; last durable status was level 18 / 39 lines / 105 placements / 6,001 frames. This is an administrative abort, NOT a natural top-out, original-game crash or valid final replay. New replacement v2 uses the SAME frozen c342429 source and profile on free CPU 9 / Mesen 11. Prepared protocol SHA256 64561ad53f1701791d29d70a69a0cea5a9361bfb56b05189cbd39977e1a095f2; read outputs/nes-255-right-a-rescue-v2-launch.json and actual status before any launch. Preserve v1 and its original protocol unchanged.
+
+Current other workers remain entry-Down 8568 on 5/7 and A diagnostic 11160 / Mesen 23736 on 13/15. The prepared A fresh-proof script will use 13/15 ONLY after the A diagnostic exits; it must not overlap it. All current source through f575ab3 is pushed. Working source is held unchanged until the A diagnostic finishes its source-hash checks; an agent is preparing an observation-guard patch outside the repo. The frozen v2 source is unaffected. Level 255 remains unfinished.
+
+--- Earlier notes follow; the mistaken unlaunched claim below is superseded ---
+
 October 23, 12:08 PM Denver — authoritative continuation update
 
 Level 255 remains unfinished. All earlier finite cohorts have ended and remain preserved. The 159-only neutral profile reached a verified stall at saved level 166 / 1,609 lines on known start 33, at 165 / 1,599 on 49, and a natural top-out at 37 / 317 on 65. These are development starts, not reserved acceptance or evidence of an RL gain.
