@@ -14,6 +14,14 @@ from nes_original.env import Buttons,from_game_bits
 from nes_original.planner import proposals
 
 
+class ControllerObservationError(RuntimeError):
+    """Public observation cannot satisfy this controller's pose contract.
+
+    This is a controller limitation, not an original-game crash diagnosis.
+    RuntimeError intentionally reaches evaluate's durable controller-error path.
+    """
+
+
 class FeedbackController:
     def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0,
                  no_softdrop_at_1g=False, no_softdrop_levels=(), nonactive_input=0,
@@ -65,6 +73,8 @@ class FeedbackController:
         self.top_boundary_locks = 0
         self.piece_type_differences = 0
         self.planning_seconds = 0.0
+        self._invalid_pose_key = self._invalid_pose_frame = None
+        self._observation_wait_orientation = None
 
     def start_plan(self,obs,plan,selected):
         if self.stage:
@@ -94,13 +104,20 @@ class FeedbackController:
     def command(self,obs):
         if self.stall_rescue_input and obs.phase == 1:
             self._reset_stall_window()
+        if obs.phase != 1:
+            self._invalid_pose_key = self._invalid_pose_frame = None
+            if self.stage == 'observation_wait':
+                self._observation_wait_orientation = None
         if self.idle:
             self.idle -= 1
             self.extra_idle_frames += 1
             return self._nonactive_button(obs) if obs.phase != 1 else 0
         if obs.phase != 1:
             return self._nonactive_button(obs)
-        if self.stage == 'settle':
+        if not self._active_pose_ready(obs, preview=self.stage in (None, 'observation_wait')):
+            self._wait_for_observation()
+            return 0
+        if self.stage in ('settle', 'observation_wait'):
             return 0
         if self.stage is None:
             start = time.perf_counter()
@@ -147,6 +164,45 @@ class FeedbackController:
             self.dropping = True
             return self._drop_button(obs)
         return self.horizontal|rotation
+
+    @staticmethod
+    def _valid_orientation(value):
+        return (isinstance(value, (int, np.integer)) and not isinstance(value, (bool, np.bool_))
+                and 0 <= int(value) < len(TYPE))
+
+    def _active_pose_ready(self, obs, *, preview=False):
+        # Guard only indices actually used by TYPE/CELLS/proposal enumeration.
+        # No extra XY, geometry, RAM, CPU, or crash heuristics are introduced.
+        orientation = getattr(obs, 'orientation', None)
+        invalid = []
+        if not self._valid_orientation(orientation):
+            invalid.append(('orientation', repr(orientation)))
+        if preview:
+            next_orientation = getattr(obs, 'next_orientation', None)
+            if not self._valid_orientation(next_orientation):
+                invalid.append(('next_orientation', repr(next_orientation)))
+        if not invalid:
+            self._invalid_pose_key = self._invalid_pose_frame = None
+            return True
+        frame = getattr(obs, 'frames', None)
+        if isinstance(frame, bool) or not isinstance(frame, int) or frame < 0:
+            raise ControllerObservationError('Invalid active orientation without an ordered public frame: '+repr(invalid))
+        key = tuple(invalid)
+        if (key == self._invalid_pose_key and self._invalid_pose_frame is not None
+                and frame > self._invalid_pose_frame):
+            raise ControllerObservationError('Invalid active orientation persisted across distinct public frames: '+repr(invalid))
+        self._invalid_pose_key, self._invalid_pose_frame = key, frame
+        return False
+
+    def _wait_for_observation(self):
+        if self.stage is None:
+            # There is no preceding plan to audit; still prevent evaluate from
+            # treating this invalid active flag as a settled target boundary.
+            self.stage = 'observation_wait'
+            self._observation_wait_orientation = None
+        elif self.stage in ('entry', 'settle'):
+            self.stage = 'settle'
+            self.spawn_orientation = None
 
     def _reset_stall_window(self):
         self._stall_key = self._stall_start_frame = self._stall_last_frame = None
@@ -205,12 +261,30 @@ class FeedbackController:
         return self.nonactive_input
 
     def transition(self,before,after):
+        if after.phase == 1 and not after.over:
+            if not self._active_pose_ready(after, preview=self.stage == 'observation_wait'):
+                self._wait_for_observation()
+                return
+        else:
+            self._invalid_pose_key = self._invalid_pose_frame = None
+        if self.stage == 'observation_wait':
+            if after.phase == 1 and not after.over:
+                if self._observation_wait_orientation != after.orientation:
+                    self._observation_wait_orientation = after.orientation
+                    return
+                self.stage = None
+                self._observation_wait_orientation = None
+            else:
+                self._observation_wait_orientation = None
+            return
         if self.stage == 'active' and before.phase == 1 and after.phase != 1:
             if after.phase != 2:
                 raise AssertionError('Original game left active control without lock phase')
             self.stage = 'entry'
             if (after.x,after.orientation) != (self.target_x,self.target_orientation):
                 self.target_misses += 1
+            if not self._valid_orientation(after.orientation):
+                raise ControllerObservationError('Invalid locked orientation: '+repr(after.orientation))
             self.above_board = any(after.y+dy<0 for dx,dy in CELLS[after.orientation])
         if self.stage == 'entry' and after.phase == 1 and not after.over:
             # Saved player RAM copies phase before orientation. A PPU boundary
@@ -221,6 +295,8 @@ class FeedbackController:
             return
         if self.stage == 'settle':
             if after.phase == 2:
+                if not self._valid_orientation(after.orientation):
+                    raise ControllerObservationError('Invalid locked orientation during settling: '+repr(after.orientation))
                 self.above_board |= any(after.y+dy<0 for dx,dy in CELLS[after.orientation])
                 self.stage = 'entry'
                 return
