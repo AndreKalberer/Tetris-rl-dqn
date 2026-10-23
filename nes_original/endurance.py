@@ -31,7 +31,8 @@ def main():
                         help='Experimental controller timing: omit Down during ordinary1G fall')
     parser.add_argument('--stop-on-success',action='store_true',
                         help='End the development suite after the first fully verified target')
-    parser.add_argument('--selector', choices=('retained-prior', 'dellacherie', 'risk-aware'), default='retained-prior')
+    parser.add_argument('--selector', choices=('retained-prior', 'dellacherie', 'risk-aware',
+                        'dellacherie-alerts'), default='retained-prior')
     args = parser.parse_args()
     if not 19 <= args.target_level <= 255 or args.max_frames < 1:
         parser.error('Use target level19..255 and a positive gameplay frame budget')
@@ -59,6 +60,9 @@ def main():
     elif args.selector == 'risk-aware':
         from nes_original.robust import RiskAwareNextPiece
         selector = RiskAwareNextPiece()
+    elif args.selector == 'dellacherie-alerts':
+        from nes_original.crash_alerts import DocumentedHazardPrioritizer
+        selector = DocumentedHazardPrioritizer()
     config = Config(prior='lookahead', tap_period=2, threads=1)
     if args.policy:
         model, _ = load_policy(args.policy)
@@ -100,10 +104,43 @@ def main():
                              process_timeout=args.process_timeout)
             self.role = role
             self.last_journal_length = 0
+            self.journal_fault = None
+
+        def _step_raw(self, buttons):
+            before = self._ram.copy() if self.started and self._ram is not None else None
+            try:
+                return super()._step_raw(buttons)
+            finally:
+                if before is not None and self._ram is not None:
+                    previous_phase, phase = int(before[0x68]), int(self._ram[0x68])
+                    previous_working, working = int(before[0x48]), int(self._ram[0x48])
+                    active_exit = (previous_phase == 1 and phase != 1) or (previous_working == 1 and working != 1)
+                    score_entry = (previous_phase != 5 and phase == 5) or (previous_working != 5 and working == 5)
+                    if active_exit or score_entry:
+                        # Read-only diagnostics, never supplied to the selector.
+                        # These may be mid-copy samples; settled counters are
+                        # certified separately by the evaluator's progress audit.
+                        event = dict(input_count=len(self.inputs),input=int(buttons),
+                            event='active_exit' if active_exit else 'score_entry',
+                            settled_boundary_certified=False,
+                            before_player_ram_hex=before[0x60:0x80].tobytes().hex(),
+                            after_player_ram_hex=self._ram[0x60:0x80].tobytes().hex(),
+                            before_working_player_ram_hex=before[0x40:0x60].tobytes().hex(),
+                            after_working_player_ram_hex=self._ram[0x40:0x60].tobytes().hex(),
+                            pre_level=int(before[0x64]),post_level=int(self._ram[0x64]),
+                            orientation=int(self._ram[0x62]),y=int(self._ram[0x61]),
+                            raw_pushdown=int(self._ram[0x6f]),phase=phase,
+                            working_pushdown=int(self._ram[0x4f]),working_phase=working,
+                            clock={key:self._request[key] for key in
+                                ('pc','cpu_cycle','video_frame','ppu_scanline','ppu_cycle')})
+                        with (output/f'{self.role}-seed-{self.seed}-events.jsonl').open('a',encoding='utf-8') as stream:
+                            stream.write(json.dumps(event)+'\n')
 
         def persist(self, error=None):
             if not self.started:
                 return
+            if error is not None:
+                self.journal_fault = error
             stem = output/f'{self.role}-seed-{self.seed}'
             inputs = bytes(self.inputs)
             temporary = stem.with_suffix('.inputs.tmp')
@@ -129,14 +166,15 @@ def main():
                 cached_ram_sha256=hashlib.sha256(self._ram.tobytes()).hexdigest(),
                 clock={key:self._request[key] for key in
                     ('pc','cpu_cycle','video_frame','ppu_scanline','ppu_cycle')},
-                exact_replay_verified=False, stable_boundary_certified=False, error=error,
+                exact_replay_verified=False, stable_boundary_certified=False, error=self.journal_fault,
                 observation_error=observation_error,
-                fault_ram_hex=self._request['ram_hex'] if error or observation_error else None))
+                fault_ram_hex=self._request['ram_hex'] if self.journal_fault or observation_error else None))
             self.last_journal_length = len(inputs)
             status('running', phase=self.role, menu_wait=self.seed, cached_observation=cached,
-                   observation_is_uncertified=True, error=error)
+                   observation_is_uncertified=True, error=self.journal_fault)
 
         def reset(self, **kwargs):
+            self.journal_fault = None
             observation = super().reset(**kwargs)
             self.persist()
             return observation
@@ -156,17 +194,35 @@ def main():
             return super().replay()
 
     created = 0
+    active_game = None
     def factory():
-        nonlocal created
+        nonlocal created, active_game
         role = 'gameplay' if created % 2 == 0 else 'verification'
         created += 1
-        return JournaledGame(role)
+        game = JournaledGame(role)
+        if role == 'gameplay':
+            active_game = game
+        return game
+
+    def log_alert_selection(observation, plan):
+        # Diagnostic output only; the selector still receives exactly the
+        # public observation/proposal pair and no emulator/internal RNG state.
+        selected = selector(observation, plan)
+        decision = selector.last_decision
+        if (any(row['alert'] for row in decision['candidates']) or
+                decision['selection_tier'] != 'unalerted_nonterminal'):
+            with (output/'alert-decisions.jsonl').open('a',encoding='utf-8') as stream:
+                stream.write(json.dumps(dict(menu_wait=active_game.seed,
+                    placements=observation.placements,level=observation.level,lines=observation.lines,
+                    score=observation.score,decision=decision))+'\n')
+        return selected
 
     status('initializing')
     try:
         rows = evaluate(model, output/'cases', seeds=args.seeds, runtime=True, config=config,
                         max_frames=args.max_frames, target_level=args.target_level, game_factory=factory,
-                        context_selector=selector,no_softdrop_at_1g=args.no_softdrop_at_1g,
+                        context_selector=log_alert_selection if args.selector=='dellacherie-alerts' else selector,
+                        no_softdrop_at_1g=args.no_softdrop_at_1g,
                         stop_on_success=args.stop_on_success)
         attained = any(row['success'] and row['exact_ram_rgb_replay'] for row in rows)
         status('complete', results=rows, target_verified=attained,

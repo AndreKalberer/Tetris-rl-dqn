@@ -60,10 +60,13 @@ class Dellacherie:
     def __init__(self):
         self.calls = 0
 
-    def __call__(self, observation, plan):
+    def score_actions(self, observation, plan):
+        """Existing raw score vector, including the original terminal penalty."""
         self.calls += 1
         actions = plan.actions
-        scores = np.array([placement_features(observation.board, state, after, cleared) @ self.weights
+        return np.array([placement_features(observation.board, state, after, cleared) @ self.weights
             - 1000000*bool(dead) for state, after, cleared, dead in
             zip(actions.controls, actions.boards, actions.lines, actions.terminal)])
-        return int(scores.argmax())
+
+    def __call__(self, observation, plan):
+        return int(self.score_actions(observation, plan).argmax())
