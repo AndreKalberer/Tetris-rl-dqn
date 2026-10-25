@@ -13,8 +13,8 @@ from nes.actions import ActionRules,enumerate_actions,execute
 from nes.engine import Game,Phase,Rules
 
 
-def active_states(seeds=range(3),steps=25):
-    rules = ActionRules(horizontal_period=2)
+def active_states(seeds=range(3),steps=25,reaction=3):
+    rules = ActionRules(horizontal_period=2,reaction_frames=reaction)
     rng = np.random.default_rng(7)
     for seed in seeds:
         game = Game(seed,Rules(start_level=18))
@@ -32,12 +32,17 @@ def active_states(seeds=range(3),steps=25):
 @unittest.skipIf(sim is None,'numba not installed')
 class FastSimulatorTest(unittest.TestCase):
     def test_candidates_match_engine_action_family(self):
+        for reaction in (3,0):
+            with self.subTest(reaction=reaction):
+                self._check_candidates(reaction)
+
+    def _check_candidates(self,reaction):
         checked = 0
-        for observation,actions in active_states():
+        for observation,actions in active_states(reaction=reaction):
             board = observation.board!=0
             states = np.zeros((sim.MAX_CANDIDATES,9),np.int64)
             n = sim.candidates(board,tuple(int(v) for v in vars(observation.control).values()),
-                observation.level,2,states)
+                observation.level,2,states,reaction)
             found = {}
             for i in range(n):
                 result,cleared,dead = sim.lock(board,*map(int,states[i,:3]))
@@ -114,3 +119,35 @@ class FastSimulatorTest(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
+
+
+def _plan(board, level):
+    states = np.zeros((sim.MAX_CANDIDATES,9),np.int64)
+    state,_ = sim.spawn_state(int(sim.SPAWNS[6]),0,board,min(level,29))
+    n = sim.candidates(board,state,min(level,29),2,states,3)
+    boards,lines,dead,controls = [],[],[],[]
+    for i in range(n):
+        result,c,d = sim.lock(board,int(states[i,0]),int(states[i,1]),int(states[i,2]))
+        boards.append(result.astype(np.uint8)); lines.append(c); dead.append(d)
+        controls.append(SimpleNamespace(x=int(states[i,0]),y=int(states[i,1]),orientation=int(states[i,2]),
+                                        das=int(states[i,4]),soft_points=int(states[i,6])))
+    return SimpleNamespace(actions=SimpleNamespace(boards=boards,lines=np.asarray(lines),
+        terminal=np.asarray(dead),controls=controls))
+
+
+@unittest.skipIf(sim is None,'numba not installed')
+class AltModeTest(unittest.TestCase):
+    def test_tetris_mode_only_low_in_range_and_outside_zones(self):
+        selector = sim.TunedSelector(sim.DELLACHERIE,sim.DELLACHERIE,well=-1,well_survive=-1,beam=0,
+            zones=[(156,158,sim.DELLACHERIE,-1)],
+            alt=(sim.SCORE_START,6,9,((29,153),),sim.DELLACHERIE))
+        low = np.zeros((20,10),np.bool_); low[17:,:9] = True
+        high = np.zeros((20,10),np.bool_); high[10:,:9] = True
+        for board,level,mode in ((low,100,'alt'),(high,100,'burn'),(low,157,'zone'),(low,200,None)):
+            with self.subTest(level=level,mode=mode):
+                before = dict(selector.modes)
+                obs = SimpleNamespace(board=board.astype(np.uint8),level=level,lines=10*level,score=999999,
+                                      placements=0,next_orientation=int(sim.SPAWNS[2]))
+                selector.score_actions(obs,_plan(board,level))
+                changed = {k for k in selector.modes if selector.modes[k]!=before.get(k,0)}-{'score','survive'}
+                self.assertEqual(changed,set() if mode is None else {mode})

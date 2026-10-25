@@ -65,11 +65,22 @@ def main():
                         help='zone lookahead: also average over the unknown piece after next')
     parser.add_argument('--expect', type=int, default=0,
                         help='tuned selectors: also average over the unknown piece after next')
+    parser.add_argument('--reaction-frames', type=int, default=3,
+                        help='neutral frames after spawn before the first input (planning time past '
+                             'max(1, this) frames is charged as idle frames)')
+    parser.add_argument('--alt-weights',
+                        help='tuned selectors: low-stack tetris weights.json used outside the zones')
+    parser.add_argument('--alt-levels', type=int, nargs='+',
+                        help='raw level ranges for --alt-weights: lo hi [lo hi ...] (default: the file\'s)')
     parser.add_argument('--stall-grace-frames', type=int,
                         help='Opt-in: extra frames for a stall that looks like a recoverable ROM loop')
     args = parser.parse_args()
     if args.endless:
         args.target_level = 10**9
+    if not 0 <= args.reaction_frames <= 10:
+        parser.error('Reaction frames must be 0..10')
+    if args.alt_levels and len(args.alt_levels)%2:
+        parser.error('--alt-levels takes level pairs')
     if not 19 <= args.target_level <= 10**9 or args.max_frames < 1:
         parser.error('Use target level19+ (256+ = absolute levels across rebirths) and a positive frame budget')
     if not args.seeds or len(args.seeds) != len(set(args.seeds)) or any(not 0 <= s <= 32766 for s in args.seeds):
@@ -111,14 +122,17 @@ def main():
         selector = tuned_selector(args.weights, beam=args.beam, expect=args.expect,
                                   zone_weights=args.zone_weights, zone_levels=tuple(args.zone_levels),
                                   zone_ban=args.zone_ban, zone_expect=args.zone_expect,
-                                  extra_zones=[tuple(zone) for zone in args.extra_zone])
+                                  extra_zones=[tuple(zone) for zone in args.extra_zone],
+                                  reaction=args.reaction_frames, alt_weights=args.alt_weights,
+                                  alt_levels=[(args.alt_levels[i], args.alt_levels[i+1])
+                                              for i in range(0, len(args.alt_levels), 2)] if args.alt_levels else None)
         if args.selector == 'tuned-alerts':
             from nes_original.crash_alerts import Observed167TriplePrioritizer
             selector = Observed167TriplePrioritizer(base_selector=selector)
         elif args.selector == 'tuned-crash-map':
             from nes_original.crash_model import CrashMapPrioritizer
             selector = CrashMapPrioritizer(base_selector=selector)
-    config = Config(prior='lookahead', tap_period=2, threads=1)
+    config = Config(prior='lookahead', tap_period=2, threads=1, reaction_frames=args.reaction_frames)
     if args.policy:
         model, _ = load_policy(args.policy)
         config = model.feature_config
@@ -150,6 +164,9 @@ def main():
         zone_ban=args.zone_ban if args.zone_weights else None,
         zone_expect=args.zone_expect if args.zone_weights else None,
         extra_zones=args.extra_zone or None,
+        reaction_frames=args.reaction_frames,
+        alt_weights=args.alt_weights if args.selector.startswith('tuned') else None,
+        alt_levels=args.alt_levels,
         selector_parameters=selector.stats() if selector and hasattr(selector, 'stats') else None,
         planner_cpu_mask=args.cpu_mask,
         emulator_cpu_mask=args.emulator_cpu_mask, process_timeout_seconds=args.process_timeout,

@@ -37,7 +37,7 @@ ZONES = {'early': (1340, 176), 'late': (3140, 255), 'mid': (1440, 160),
 # Modelled fatal probability of a zero-line lock without pushdown (outputs/NES-CRASH-MAP-RESEARCH.json).
 ZERO_LINE_CRASH = {249: {'hZ': .75, 'other': .583}, 253: {'other': .104}, 255: {'hZ': .104, 'other': .75}}
 LEVEL_AT = [18]
-for _ in range(6800):
+for _ in range(20000):
     LEVEL_AT.append(after_clear(LEVEL_AT[-1], len(LEVEL_AT)-1, 1)[0])
 
 
@@ -52,12 +52,14 @@ _SELECTORS = {}
 
 
 def _selector(config):
-    key = json.dumps({k: config[k] for k in ('beam', 'zone_weights', 'zone_levels', 'zone_ban', 'zone_expect',
-                                             'extra_zones')}, sort_keys=True, default=str)
+    key = json.dumps({k: config.get(k) for k in ('beam', 'zone_weights', 'zone_levels', 'zone_ban', 'zone_expect',
+                                                 'extra_zones', 'reaction', 'alt_weights', 'alt_levels')},
+                     sort_keys=True, default=str)
     if key not in _SELECTORS:
         _SELECTORS[key] = sim.tuned_selector('dellacherie', beam=config['beam'], zone_weights=config['zone_weights'],
             zone_levels=tuple(config['zone_levels']), zone_ban=config['zone_ban'], zone_expect=config['zone_expect'],
-            extra_zones=[tuple(z) for z in config['extra_zones']])
+            extra_zones=[tuple(z) for z in config['extra_zones']], reaction=config.get('reaction', 3),
+            alt_weights=config.get('alt_weights'), alt_levels=config.get('alt_levels'))
     return _SELECTORS[key]
 
 
@@ -70,10 +72,18 @@ def play(job):
                                trap_penalty=config.get('trap_penalty', 30.))
     if config.get('budget_table'):
         prio.budget_table = tuple(tuple(x) for x in config['budget_table'])
-    lines = start_lines + int(rng.integers(0, 10)) if config.get('start_board') is None else start_lines
+    full = config.get('stop_lines') is not None
+    if full:
+        # Whole game from the level-18 start: true counters, stop at an absolute line count.
+        lines, placements = 0, 0
+        prio.counts = [0, 0, 0, 0, 0]
+    else:
+        lines = start_lines + int(rng.integers(0, 10)) if config.get('start_board') is None else start_lines
+        placements = 3000
+        prio.counts = [0, int(rng.integers(900, 1300)), int(rng.integers(150, 260)), int(rng.integers(5, 20)), 0]
     level = LEVEL_AT[lines]
-    placements = 3000
-    prio.counts = [0, int(rng.integers(900, 1300)), int(rng.integers(150, 260)), int(rng.integers(5, 20)), 0]
+    points = 0
+    reaction = int(config.get('reaction', 3))
     prio.counts_known, prio.previous = True, (placements, lines)
     board = np.zeros((20, 10), np.bool_)
     if config.get('start_board') is not None:
@@ -94,7 +104,11 @@ def play(job):
     states = np.zeros((sim.MAX_CANDIDATES, 9), np.int64)
     snapshots = {}
     moves = []
-    while level < stop_level:
+    def end(result, **extra):
+        return dict(seed=seed, result=result, level=level, lines=lines, points=points, snapshots=snapshots,
+                    moves=moves, **extra)
+
+    while (lines < config['stop_lines']) if full else (level < stop_level):
         for t in (1480, 1500, 1510):
             if t not in snapshots and lines >= t and lines < t+20:
                 filled = board.any(axis=1)
@@ -106,8 +120,8 @@ def play(job):
         # decision), not after the two settle frames sim.spawn_state uses.
         state, failed = sim.frame(board, (5, 0, int(current), 0, das, 0, 0, 0), 0, gravity_level)
         if failed:
-            return dict(seed=seed, result='top_out', level=level, lines=lines, snapshots=snapshots, moves=moves)
-        n = sim.candidates(board, state, gravity_level, 2, states)
+            return end('top_out')
+        n = sim.candidates(board, state, gravity_level, 2, states, reaction)
         boards, cleared, dead, controls, frames = [], [], [], [], []
         seen = {}
         for i in range(n):
@@ -124,7 +138,7 @@ def play(job):
             boards.append(result.astype(np.uint8)); cleared.append(c); dead.append(d); controls.append(Control(states[i]))
             frames.append(int(states[i, 8]))
         if all(dead):
-            return dict(seed=seed, result='top_out', level=level, lines=lines, snapshots=snapshots, moves=moves)
+            return end('top_out')
         actions = SimpleNamespace(boards=boards, lines=np.asarray(cleared), terminal=np.asarray(dead), controls=controls)
         plan = SimpleNamespace(actions=actions)
         obs = SimpleNamespace(board=board.astype(np.uint8), level=level, lines=lines, score=999999,
@@ -136,7 +150,7 @@ def play(job):
                               orientation=controls[index].orientation, cleared=int(cleared[index]), das=int(das),
                               next=int(upcoming), counts=list(prio.counts)))
         if dead[index]:
-            return dict(seed=seed, result='top_out', level=level, lines=lines, snapshots=snapshots, moves=moves)
+            return end('top_out')
         # Crash sampling with the true conditions for the chosen move.
         p = row['modelled_crash_probability'] if cleared[index] else 0.
         if not cleared[index] and level in NEEDS_PUSHDOWN and piece_class(controls[index].orientation) in NEEDS_PUSHDOWN[level]:
@@ -147,11 +161,12 @@ def play(job):
         if config.get('record_moves'):
             moves[-1]['crash_p'] = round(float(p), 9)
         if p and rng.random() < p:
-            return dict(seed=seed, result='crash', level=level, lines=lines, clear=int(cleared[index]),
-                        alert=row.get('alert') or (row.get('accepted_risk') or {}).get('alert'), moves=moves)
+            return end('crash', clear=int(cleared[index]),
+                       alert=row.get('alert') or (row.get('accepted_risk') or {}).get('alert'))
         board = boards[index].astype(np.bool_)
         das = controls[index].das
-        level, lines = after_clear(level, lines, int(cleared[index]))
+        level, lines = LEVEL_AT[lines+int(cleared[index])], lines+int(cleared[index])
+        points += int(sim.BASE_POINTS[int(cleared[index])])*(level+1)
         placements += 1
         for _ in range(frames[index] + 14 + (20 if cleared[index] else 0)):
             lfsr = sim._lfsr(lfsr)
@@ -159,7 +174,7 @@ def play(job):
         lfsr, count, upcoming = sim._draw(lfsr, count, current)
         if forced:
             upcoming = forced.pop(0)
-    return dict(seed=seed, result='pass', level=level, lines=lines, snapshots=snapshots, moves=moves)
+    return end('pass')
 
 
 def main():
@@ -184,6 +199,10 @@ def main():
     p.add_argument('--start-counts', type=int, nargs=5, help='clears so far by type (index 0..4)')
     p.add_argument('--stop-level', type=int)
     p.add_argument('--piece-sequence', type=Path, help='JSON list of spawn orientations to play first')
+    p.add_argument('--reaction', type=int, default=3, help='frames before the first input after spawn')
+    p.add_argument('--alt-weights', help='low-stack tetris weights.json used outside the zones')
+    p.add_argument('--alt-levels', type=int, nargs='+', help='level ranges for the tetris weights: lo hi lo hi ...')
+    p.add_argument('--stop-lines', type=int, help='play a whole game from level 18 to this absolute line count')
     p.add_argument('--output', type=Path)
     args = p.parse_args()
     extra = args.extra_zone if args.extra_zone is not None else [[str(ROOT/'runs/lowstack-246-249.json'), '246', '249']]
@@ -192,7 +211,10 @@ def main():
                   extra_zones=[tuple(z) for z in extra],
                   preempt=not args.no_preempt, risk_budget=not args.no_risk_budget, trap_penalty=args.trap_penalty,
                   budget_table=[(int(args.budget[i]), args.budget[i+1]) for i in range(0, len(args.budget), 2)]
-                  if args.budget else None)
+                  if args.budget else None,
+                  reaction=args.reaction, alt_weights=args.alt_weights,
+                  alt_levels=[(args.alt_levels[i], args.alt_levels[i+1]) for i in range(0, len(args.alt_levels), 2)]
+                  if args.alt_levels else None, stop_lines=args.stop_lines)
     if args.start_board:
         data = json.loads(args.start_board.read_text())
         rows = data['rows'] if isinstance(data, dict) else data
@@ -212,7 +234,9 @@ def main():
         key = f"{r['result']}@{r['level']}"
         by_level[key] = by_level.get(key, 0)+1
     summary = dict(zone=args.zone, games=len(rows), passes=passes, pass_rate=passes/len(rows),
-                   failures=dict(sorted(by_level.items(), key=lambda kv: -kv[1])), config=config)
+                   failures=dict(sorted(by_level.items(), key=lambda kv: -kv[1])),
+                   mean_points=float(np.mean([r['points'] for r in rows])),
+                   mean_lines=float(np.mean([r['lines'] for r in rows])), config=config)
     print(json.dumps(summary, indent=1))
     if args.output:
         args.output.write_text(json.dumps(dict(summary=summary, rows=rows), indent=1))

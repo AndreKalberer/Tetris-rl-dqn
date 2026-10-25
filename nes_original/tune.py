@@ -108,7 +108,7 @@ def evaluate(pool,mode,w,fixed,seeds,options):
 
 def load_weights(path):
     data = json.loads(Path(path).read_text(encoding='utf-8'))
-    if data.get('features')!=list(sim.FEATURES):
+    if data.get('features') not in (list(sim.FEATURES),list(sim.FEATURES[:sim.N_REACH0])):
         raise ValueError(f'{path} was written for a different feature list')
     return data
 

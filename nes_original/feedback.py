@@ -27,8 +27,15 @@ class FeedbackController:
     def __init__(self, *, fixed_reaction=False, selector=None, context_selector=None,tap_period=0,
                  no_softdrop_at_1g=False, no_softdrop_levels=(), nonactive_input=0,
                  stall_rescue_input=0, stall_rescue_after=120,
-                 stall_rescue_fallback_input=0, stall_rescue_primary_frames=8):
+                 stall_rescue_fallback_input=0, stall_rescue_primary_frames=8, reaction_frames=3):
         self.fixed_reaction,self.selector = fixed_reaction,selector
+        # Neutral frames after the first stable active frame before the first input. Planning
+        # time beyond max(1, reaction_frames) frames is charged as idle frames (one frame is the
+        # normal observe-then-input step).
+        if (isinstance(reaction_frames, bool) or not isinstance(reaction_frames, int)
+                or not 0 <= reaction_frames <= 10):
+            raise ValueError('Reaction frames must be an integer0..10')
+        self.reaction_frames = reaction_frames
         self.context_selector = context_selector
         self.tap_period = tap_period
         self.no_softdrop_at_1g = bool(no_softdrop_at_1g)
@@ -66,7 +73,7 @@ class FeedbackController:
         self.stall_rescue_attempts = self.stall_rescue_frames = 0
         self.stall_rescue_fallback_activations = self.stall_rescue_fallback_frames = 0
         self._reset_stall_window()
-        self.rules = ActionRules(horizontal_period=tap_period)
+        self.rules = ActionRules(horizontal_period=tap_period, reaction_frames=reaction_frames)
         self.stage = None
         self.idle = 0
         self.plans = self.overruns = self.extra_idle_frames = 0
@@ -132,7 +139,7 @@ class FeedbackController:
             elapsed = time.perf_counter()-start
             self.plans += 1
             self.planning_seconds += elapsed
-            if elapsed > 3/FPS:
+            if elapsed > max(1, self.reaction_frames)/FPS:
                 self.overruns += 1
                 if not self.fixed_reaction:
                     self.idle = max(0,int(np.ceil(elapsed*FPS))-1)
@@ -141,9 +148,9 @@ class FeedbackController:
             self.start_plan(obs,plan,selected)
         frame = self.elapsed
         self.elapsed += 1
-        if frame < 3:
+        if frame < self.reaction_frames:
             return 0
-        navigation = frame-3
+        navigation = frame-self.reaction_frames
         if TYPE[obs.orientation] != TYPE[self.target_orientation]:
             self.piece_type_differences += 1
             self.dropping = True
@@ -331,7 +338,7 @@ class FeedbackController:
             board_audit_failures=self.board_audit_failures,top_boundary_locks=self.top_boundary_locks,
             piece_type_differences=self.piece_type_differences,
             action_interface='Native feedback targets; approximate proposal features',
-            reaction_frames=3,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
+            reaction_frames=self.reaction_frames,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
             horizontal_pulse_period=self.tap_period,rotation_period=4,
             no_softdrop_at_1g=self.no_softdrop_at_1g,
             no_softdrop_levels=sorted(self.no_softdrop_levels),
