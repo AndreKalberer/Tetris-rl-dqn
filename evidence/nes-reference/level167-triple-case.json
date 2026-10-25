@@ -1,0 +1,63 @@
+{
+  "seed": 33,
+  "level": 167,
+  "lines": 1613,
+  "score": 999999,
+  "backend": "JournaledGame",
+  "placements": 4034,
+  "success": false,
+  "over": false,
+  "error": "rom_nmi_counter_stalled; diagnostics=C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\nes-255-conditional-right-rescue-v1\\attempts\\reference-sessions\\ae79f47a497e42c18e022f11249a1f78",
+  "censored": false,
+  "observed_fault": {
+    "type": "SuspectedCrash",
+    "reason": "rom_nmi_counter_stalled"
+  },
+  "fault_reproduced": true,
+  "termination_kind": "suspected_original_crash",
+  "exact_ram_rgb_replay": true,
+  "controller": {
+    "plans": 4035,
+    "planning_seconds": 27.631492400338175,
+    "planning_overruns": 1,
+    "extra_idle_frames": 5,
+    "runtime_latency_charged": true,
+    "target_misses": 0,
+    "proposal_board_differences": 0,
+    "board_audit_failures": 0,
+    "top_boundary_locks": 0,
+    "piece_type_differences": 0,
+    "action_interface": "Native feedback targets; approximate proposal features",
+    "reaction_frames": 3,
+    "navigation_frames": 48,
+    "horizontal_change_period": 1,
+    "horizontal_pulse_period": 2,
+    "rotation_period": 4,
+    "no_softdrop_at_1g": false,
+    "no_softdrop_levels": [
+      159
+    ],
+    "nonactive_input": 0,
+    "nonactive_input_frames": 73292,
+    "stall_rescue_input": 128,
+    "stall_rescue_after": 120,
+    "stall_rescue_attempts": 11,
+    "stall_rescue_frames": 1404
+  },
+  "case_state": "verified",
+  "start_level": 18,
+  "target_level": 255,
+  "target_reached": false,
+  "peak_level": 167,
+  "frames": 157094,
+  "max_frames": 2000000,
+  "progress": {
+    "raw_level": 167,
+    "level_cycles": 0,
+    "absolute_level": 167,
+    "raw_lines": 1610,
+    "line_counter_cycles": 0,
+    "absolute_lines": 1610
+  },
+  "target_criterion": "Audited native counters at a settled active-piece controller boundary"
+}

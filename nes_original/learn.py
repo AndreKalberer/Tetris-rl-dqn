@@ -346,6 +346,9 @@ def load_policy(path):
     return model,data
 
 
+ENDLESS = 10**9  # target level that is never reached: play until the game ends
+
+
 def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames=120000,config=None,
              game_factory=OriginalGame,target_level=30,context_selector=None,no_softdrop_at_1g=False,
              stop_on_success=False,no_softdrop_levels=(),nonactive_input=0,
@@ -356,12 +359,16 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
     target_level255 means reaching255, not clearing it or certifying rebirth.
     It requires the first-cycle line window3290..3293 and valid per-piece
     original counter transitions; replaying corrupted RAM cannot certify it.
+    Targets above 255 are absolute levels across rebirths (level 255 -> 0):
+    256*cycles+level from audited wraps; 511 = level 255 on the second lap.
+    ENDLESS (a huge target) plays until the game ends or the frame budget runs out.
     max_frames bounds gameplay frames after menu entry, not reconstruction time.
     context_selector optionally replaces feature/model selection, using only
     the same observation and approximate proposal interface as the defaults.
     """
-    if isinstance(target_level,bool) or not isinstance(target_level,int) or not 19<=target_level<=255:
-        raise ValueError('target_level must be an integer from19 through255 for a level18 start')
+    if isinstance(target_level,bool) or not isinstance(target_level,int) or not 19<=target_level<=ENDLESS:
+        raise ValueError('target_level must be an integer from19 (absolute levels count rebirths; '
+                         f'{ENDLESS} = endless) for a level18 start')
     if isinstance(max_frames,bool) or not isinstance(max_frames,int) or max_frames<1:
         raise ValueError('max_frames must be a positive integer gameplay-frame budget')
     if context_selector is not None and (model is not None or not callable(context_selector)):
@@ -410,9 +417,13 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
                             progress_counters = progress.update(o.level,o.lines,o.placements)
                         except ValueError as exc:
                             raise RuntimeError(f'Progress counter audit failed: {exc}') from exc
-                        peak_level = max(peak_level,progress.level)
-                        target_reached = progress.level>=target_level and (target_level!=255 or
-                            (progress.level_cycles==0 and 3290<=progress.absolute_lines<=3293))
+                        absolute_level = 256*progress.level_cycles+progress.level
+                        peak_level = max(peak_level,absolute_level)
+                        if target_level<=255:
+                            target_reached = progress.level>=target_level and progress.level_cycles==0 and (
+                                target_level!=255 or 3290<=progress.absolute_lines<=3293)
+                        else:
+                            target_reached = absolute_level>=target_level
                 except (AssertionError,RuntimeError) as exc:
                     error = str(exc)
                     if type(exc) is SuspectedCrash:

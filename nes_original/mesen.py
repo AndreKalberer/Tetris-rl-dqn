@@ -220,9 +220,14 @@ class MesenGame:
     """
     def __init__(self, rom_path=None, *, executable=None, session_root=None,
                  action_timeout=30, process_timeout=3600, watchdog_frames=600,
-                 affinity=0x5000, transport='pipe'):
+                 affinity=0x5000, transport='pipe', stall_grace_frames=None):
         if os.name != 'nt':
             raise RuntimeError('This reference launcher currently supports Windows only')
+        # Opt-in (None keeps the frozen default): classify semantic stalls and
+        # give a ROM-resident, NMI-advancing loop extra frames for legal rescue.
+        if stall_grace_frames is not None and (isinstance(stall_grace_frames,bool) or
+                not isinstance(stall_grace_frames,int) or not 1<=stall_grace_frames<=36000):
+            raise ValueError('stall_grace_frames must be None or an integer1..36000')
         self.executable = Path(executable or os.environ.get('NES_MESEN_EXE', '')).resolve()
         if not self.executable.is_file() or not self.executable.with_name('settings.json').is_file():
             raise ValueError('Pass an existing portable MesenCE executable with local settings.json')
@@ -250,6 +255,9 @@ class MesenGame:
         if transport not in ('file','pipe','pipe-blocking'):
             raise ValueError('Choose file, pipe or pipe-blocking IPC')
         self.transport = transport
+        self.stall_grace_frames = stall_grace_frames
+        self.stall_events = []
+        self._prg = None
         self._pipes = None
         self._idle_stop = None
         self._idle_thread = None
@@ -409,13 +417,67 @@ class MesenGame:
             reason = 'rom_nmi_counter_stalled'
         elif self._semantic_stalled >= self.watchdog_frames:
             reason = 'gameplay_state_stalled'
-        if reason:
+        grace = getattr(self, 'stall_grace_frames', None)
+        if reason and grace is None:
             self._fault_record(reason)
             raise SuspectedCrash(f'{reason}; diagnostics={self.session_dir}')
+        if reason:
+            stall = self._classify_stall()
+            if reason == 'gameplay_state_stalled' and stall['classification'] == 'recoverable_loop':
+                extra = self._semantic_stalled - self.watchdog_frames
+                stall.update(grace_frames=grace, grace_elapsed=extra, semantic_stalled=self._semantic_stalled)
+                if extra == 0:
+                    self.stall_events.append(dict(stall, frames=len(self.inputs)-self.start_frame))
+                if extra < grace:
+                    return  # Leave the controller's legal rescue a bounded window.
+                stall['grace_exhausted'] = True
+            self._fault_record(reason, stall)
+            raise SuspectedCrash(f'{reason}; diagnostics={self.session_dir}')
 
-    def _fault_record(self, reason):
+    # The NMI counter may legitimately repeat on one callback (poll jitter);
+    # longer repetition is treated as a stopped NMI for classification.
+    NMI_ADVANCING_TOLERANCE = 1
+
+    def _classify_stall(self):
+        """Read-only stall diagnosis from the bridge's existing cpu.pc sample.
+
+        pc is sampled at the inputPolled callback, not at an arbitrary stall
+        instant. Opcodes come from cached RAM ($0000-$1FFF mirror) or the
+        verified ROM image ($8000+, fixed 32 KiB PRG); neither is written.
+        """
+        request = self._request or {}
+        pc = request.get('pc')
+        pc = int(pc) if isinstance(pc, int) and not isinstance(pc, bool) and 0 <= pc <= 0xFFFF else None
+        nmi_advancing = self._nmi_stalled <= self.NMI_ADVANCING_TOLERANCE
+        if pc is None: region = 'unknown'
+        elif pc >= 0x8000: region = 'rom'
+        elif pc < 0x2000: region = 'ram'
+        else: region = 'io_or_cartridge_ram'
+        classification = 'recoverable_loop' if nmi_advancing and region == 'rom' else 'hard_crash'
+        return dict(classification=classification, pc=pc, pc_region=region,
+            opcode=self._opcode_at(pc), nmi_advancing=nmi_advancing, nmi_stalled_frames=self._nmi_stalled)
+
+    def _opcode_at(self, pc):
+        if pc is None: return None
+        if pc < 0x2000:
+            return int(self._ram[pc & 0x7FF]) if self._ram is not None and self._ram.size == 2048 else None
+        if pc < 0x8000: return None
+        if self._prg is None:
+            try:
+                image = Path(self.rom_path).read_bytes()
+                # iNES: 16-byte header, optional 512-byte trainer, then PRG.
+                start = 16 + (512 if image[6] & 4 else 0)
+                self._prg = image[start:start+16384*image[4]] if image[:4] == b'NES\x1a' else b''
+            except (AttributeError, OSError, IndexError, TypeError):
+                self._prg = b''
+        if len(self._prg) == 32768: return int(self._prg[pc - 0x8000])
+        return None  # Banked PRG mapping is not exposed by the bridge.
+
+    def _fault_record(self, reason, stall=None):
         data = dict(reason=reason, classification='suspected_crash', frames=len(self.inputs)-self.start_frame,
             input_hex=self.inputs.hex(), request=self._request)
+        if stall is not None:
+            data['stall'] = stall
         (self.session_dir / 'suspected-crash.json').write_text(json.dumps(data, indent=2), encoding='utf-8')
 
     def reset(self, *, start_level=18, seed=0):
@@ -427,6 +489,7 @@ class MesenGame:
         self.inputs = bytearray()
         self.placements = self.start_frame = 0
         self._nmi_stalled = self._semantic_stalled = 0
+        self.stall_events = []
         self.start_level, self.seed = start_level, seed
         self._launch()
 

@@ -70,8 +70,11 @@ class DocumentedHazardPrioritizer:
             all_terminal_fallback=0)
         self.last_decision = None
 
+    def _candidate_alerts(self, observation, plan):
+        return candidate_alerts(observation, plan)
+
     def __call__(self,observation,plan):
-        candidates = candidate_alerts(observation,plan)
+        candidates = self._candidate_alerts(observation,plan)
         scores = np.array(self.base_selector.score_actions(observation,plan),dtype=float,copy=True)
         if scores.shape!=(len(candidates),) or not np.isfinite(scores).all():
             raise ValueError('Expected one finite base score per proposal')
@@ -111,3 +114,61 @@ class DocumentedHazardPrioritizer:
             capped_calls=self.capped_calls,calls_with_candidate_alerts=self.calls_with_candidate_alerts,
             alert_candidates=dict(self.alert_candidates),selection_tiers=dict(self.selections),
             last_decision=copy.deepcopy(self.last_decision),scope=SCOPE)
+
+
+_OBSERVED_167_ALERT = 'native_observed_triple_within_167'
+_OBSERVED_167_SCOPE = (
+    'Experimental four-documented-plus-native-observed167 proxy; one known-start33 development event; '
+    'capped public counters and approximate clear projection only, not an exact pushdown/timing crash oracle; '
+    'the original observed fault has an exact verified replay; unalerted remains unknown, not safe')
+
+
+def observed167_candidate_alerts(observation, plan):
+    """Separate experimental extension; candidate_alerts/SIGNATURES stay intact.
+
+    One recorded known-start33 development event was a capped triple within167
+    with raw pushdown6. This broader counter proxy does NOT read pushdown, infer
+    native CPU timing, fix the ambiguous primary table label, or certify risk.
+    Its original fault was reproduced by an exact full native input replay.
+    That proof establishes repeatability of that event, not this proxy's efficacy.
+    """
+    rows = candidate_alerts(observation, plan)
+    for row in rows:
+        if (observation.score == 999999 and
+                (row['pre_level'], row['predicted_level'], row['predicted_cleared_lines']) == (167, 167, 3)):
+            row['alert'] = _OBSERVED_167_ALERT
+            row['alert_origin'] = 'native_observed_public_counter_proxy'
+        else:
+            row['alert_origin'] = 'documented_conditional_signature' if row['alert'] is not None else None
+    return rows
+
+
+class Observed167TriplePrioritizer(DocumentedHazardPrioritizer):
+    """Optional development profile; retained four-alert defaults are unchanged."""
+    def __init__(self, base_selector=None):
+        super().__init__(base_selector)
+        self.alert_candidates[_OBSERVED_167_ALERT] = 0
+
+    def _candidate_alerts(self, observation, plan):
+        return observed167_candidate_alerts(observation, plan)
+
+    def __call__(self, observation, plan):
+        selected = super().__call__(observation, plan)
+        self.last_decision.update(scope=_OBSERVED_167_SCOPE,
+            alert_profile='documented_four_plus_native_observed167',
+            observed_alert_is_public_counter_proxy=True,
+            observed_fault_replay_status='verified_original_fault_replay')
+        return selected
+
+    def stats(self):
+        result = super().stats()
+        result.update(scope=_OBSERVED_167_SCOPE,
+            alert_profile='documented_four_plus_native_observed167',
+            alert_candidates_by_origin=dict(
+                documented_conditional_signature=sum(self.alert_candidates[name] for name in SIGNATURES.values()),
+                native_observed_public_counter_proxy=self.alert_candidates[_OBSERVED_167_ALERT]),
+            observed_evidence=dict(known_menu_wait=33, development_only=True, pre_level=167,
+                post_level=167, cleared_lines=3, score_cap=999999, recorded_raw_pushdown=6,
+                raw_pushdown_or_native_timing_used_by_selector=False,
+                original_fault_replay_status='verified_original_fault_replay'))
+        return result

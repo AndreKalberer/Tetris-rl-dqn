@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--jit-deps', type=Path, required=True)
     parser.add_argument('--seeds', type=int, nargs='+', default=[33])
     parser.add_argument('--target-level', type=int, default=255)
+    parser.add_argument('--endless', action='store_true',
+                        help='no target: play until the game ends (top-out or crash) or --max-frames runs out')
     parser.add_argument('--max-frames', type=int, default=2000000)
     parser.add_argument('--cpu-mask', type=lambda value: int(value, 0), default=32)
     parser.add_argument('--emulator-cpu-mask', type=lambda value: int(value, 0), default=128)
@@ -44,10 +46,32 @@ def main():
     parser.add_argument('--stop-on-success',action='store_true',
                         help='End the development suite after the first fully verified target')
     parser.add_argument('--selector', choices=('retained-prior', 'dellacherie', 'risk-aware',
-                        'dellacherie-alerts'), default='retained-prior')
+                        'dellacherie-alerts', 'dellacherie-observed-167', 'tuned', 'tuned-alerts', 'tuned-crash-map'),
+                        default='retained-prior')
+    parser.add_argument('--weights', default='score_start',
+                        help='tuned selectors: weights.json from nes_original.tune, or score_start / dellacherie')
+    parser.add_argument('--beam', type=int, default=3,
+                        help='tuned selectors: proposals expanded with the visible next piece (0 = one-ply)')
+    parser.add_argument('--zone-weights',
+                        help='tuned selectors: weights.json used only within --zone-levels (e.g. no-singles play)')
+    parser.add_argument('--zone-levels', type=int, nargs=2, default=(156, 158))
+    parser.add_argument('--trace-levels', type=int, nargs=2,
+                        help='diagnostics: log every decision input between these levels to decision-trace.jsonl')
+    parser.add_argument('--extra-zone', nargs='+', action='append', default=[],
+                        help='tuned selectors: WEIGHTS FIRST LAST [CHILD_BAN_MASK [EXPECT]] - more level zones')
+    parser.add_argument('--zone-ban', type=int, default=2,
+                        help='clear sizes banned in zone lookahead children (bitmask; 2 = singles)')
+    parser.add_argument('--zone-expect', type=int, default=2,
+                        help='zone lookahead: also average over the unknown piece after next')
+    parser.add_argument('--expect', type=int, default=0,
+                        help='tuned selectors: also average over the unknown piece after next')
+    parser.add_argument('--stall-grace-frames', type=int,
+                        help='Opt-in: extra frames for a stall that looks like a recoverable ROM loop')
     args = parser.parse_args()
-    if not 19 <= args.target_level <= 255 or args.max_frames < 1:
-        parser.error('Use target level19..255 and a positive gameplay frame budget')
+    if args.endless:
+        args.target_level = 10**9
+    if not 19 <= args.target_level <= 10**9 or args.max_frames < 1:
+        parser.error('Use target level19+ (256+ = absolute levels across rebirths) and a positive frame budget')
     if not args.seeds or len(args.seeds) != len(set(args.seeds)) or any(not 0 <= s <= 32766 for s in args.seeds):
         parser.error('Pass distinct genuine menu waits0..32766')
     if args.cpu_mask <= 0 or args.emulator_cpu_mask <= 0 or args.cpu_mask & args.emulator_cpu_mask:
@@ -79,6 +103,21 @@ def main():
     elif args.selector == 'dellacherie-alerts':
         from nes_original.crash_alerts import DocumentedHazardPrioritizer
         selector = DocumentedHazardPrioritizer()
+    elif args.selector == 'dellacherie-observed-167':
+        from nes_original.crash_alerts import Observed167TriplePrioritizer
+        selector = Observed167TriplePrioritizer()
+    elif args.selector in ('tuned', 'tuned-alerts', 'tuned-crash-map'):
+        from nes_original.sim import tuned_selector
+        selector = tuned_selector(args.weights, beam=args.beam, expect=args.expect,
+                                  zone_weights=args.zone_weights, zone_levels=tuple(args.zone_levels),
+                                  zone_ban=args.zone_ban, zone_expect=args.zone_expect,
+                                  extra_zones=[tuple(zone) for zone in args.extra_zone])
+        if args.selector == 'tuned-alerts':
+            from nes_original.crash_alerts import Observed167TriplePrioritizer
+            selector = Observed167TriplePrioritizer(base_selector=selector)
+        elif args.selector == 'tuned-crash-map':
+            from nes_original.crash_model import CrashMapPrioritizer
+            selector = CrashMapPrioritizer(base_selector=selector)
     config = Config(prior='lookahead', tap_period=2, threads=1)
     if args.policy:
         model, _ = load_policy(args.policy)
@@ -102,7 +141,15 @@ def main():
         stall_rescue_fallback=args.stall_rescue_fallback,
         stall_rescue_primary_frames=args.stall_rescue_primary_frames,
         verification_transport=args.verification_transport or args.transport,
-        stop_on_success=args.stop_on_success,
+        stop_on_success=args.stop_on_success,stall_grace_frames=args.stall_grace_frames,
+        weights=args.weights if args.selector.startswith('tuned') else None,
+        beam=args.beam if args.selector.startswith('tuned') else None,
+        expect=args.expect if args.selector.startswith('tuned') else None,
+        zone_weights=args.zone_weights if args.selector.startswith('tuned') else None,
+        zone_levels=list(args.zone_levels) if args.zone_weights else None,
+        zone_ban=args.zone_ban if args.zone_weights else None,
+        zone_expect=args.zone_expect if args.zone_weights else None,
+        extra_zones=args.extra_zone or None,
         selector_parameters=selector.stats() if selector and hasattr(selector, 'stats') else None,
         planner_cpu_mask=args.cpu_mask,
         emulator_cpu_mask=args.emulator_cpu_mask, process_timeout_seconds=args.process_timeout,
@@ -124,6 +171,7 @@ def main():
             super().__init__(executable=args.mesen, session_root=output/'reference-sessions',
                              affinity=args.emulator_cpu_mask, action_timeout=60,
                              process_timeout=args.process_timeout,
+                             stall_grace_frames=args.stall_grace_frames,
                              transport=(args.verification_transport or args.transport)
                                 if role=='verification' else args.transport)
             self.role = role
@@ -232,7 +280,25 @@ def main():
         # Diagnostic output only; the selector still receives exactly the
         # public observation/proposal pair and no emulator/internal RNG state.
         selected = selector(observation, plan)
+        log_alert_selection.wants_down = bool(getattr(selector, 'wants_down', False))
         decision = selector.last_decision
+        if args.trace_levels and args.trace_levels[0] <= observation.level <= args.trace_levels[1]:
+            # Full decision input for offline replay (diagnostics only; never fed back).
+            actions = plan.actions
+            with (output/'decision-trace.jsonl').open('a',encoding='utf-8') as stream:
+                stream.write(json.dumps(dict(menu_wait=active_game.seed,placements=observation.placements,
+                    level=observation.level,lines=observation.lines,score=observation.score,
+                    next_orientation=int(getattr(observation,'next_orientation',-1)),
+                    board=(observation.board!=0).astype(int).tolist(),
+                    control=dict(x=int(observation.x),y=int(observation.y),orientation=int(observation.orientation),
+                                 das=int(observation.das)),
+                    candidates=[dict(board=(b!=0).astype(int).tolist(),lines=int(l),terminal=bool(t),
+                        x=int(c.x),y=int(c.y),orientation=int(c.orientation),das=int(c.das),
+                        soft_points=int(c.soft_points)) for b,l,t,c in
+                        zip(actions.boards,actions.lines,actions.terminal,actions.controls)],
+                    selected=int(selected),counts=list(getattr(selector,'counts',[])),
+                    counts_known=bool(getattr(selector,'counts_known',False)),
+                    wants_down=bool(getattr(selector,'wants_down',False))))+'\n')
         if (any(row['alert'] for row in decision['candidates']) or
                 decision['selection_tier'] != 'unalerted_nonterminal'):
             with (output/'alert-decisions.jsonl').open('a',encoding='utf-8') as stream:
@@ -245,7 +311,8 @@ def main():
     try:
         rows = evaluate(model, output/'cases', seeds=args.seeds, runtime=True, config=config,
                         max_frames=args.max_frames, target_level=args.target_level, game_factory=factory,
-                        context_selector=log_alert_selection if args.selector=='dellacherie-alerts' else selector,
+                        context_selector=log_alert_selection if args.selector in
+                            ('dellacherie-alerts', 'dellacherie-observed-167', 'tuned-alerts', 'tuned-crash-map') else selector,
                         no_softdrop_at_1g=args.no_softdrop_at_1g,
                         no_softdrop_levels=args.no_softdrop_levels,
                         nonactive_input=nonactive_input,

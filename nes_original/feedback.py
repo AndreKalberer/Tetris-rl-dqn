@@ -10,15 +10,16 @@ import numpy as np
 
 from nes.actions import ActionRules,rotate_button
 from nes.engine import CELLS,FPS,TYPE
-from nes_original.env import Buttons,from_game_bits
+from nes_original.env import Buttons,ObservationFault,from_game_bits
 from nes_original.planner import proposals
 
 
-class ControllerObservationError(RuntimeError):
+class ControllerObservationError(ObservationFault):
     """Public observation cannot satisfy this controller's pose contract.
 
     This is a controller limitation, not an original-game crash diagnosis.
-    RuntimeError intentionally reaches evaluate's durable controller-error path.
+    RuntimeError intentionally reaches evaluate's durable controller-error path;
+    ObservationFault types invalid orientation decode alongside invalid BCD.
     """
 
 
@@ -96,6 +97,9 @@ class FeedbackController:
         # Restrict this to ordinary fall-byte values too: the ROM's signed
         # comparison can skip natural gravity after a byte wrap/high value.
         enabled = self.no_softdrop_at_1g or obs.level in self.no_softdrop_levels
+        # A selector may ask to keep Down for the current piece (crash_model.DOWN_OPTION).
+        if enabled and getattr(self.context_selector, 'wants_down', False):
+            enabled = False
         if (enabled and obs.level >= 29 and 0 <= obs.soft < 128
                 and 0 <= obs.fall <= 127):
             return 0

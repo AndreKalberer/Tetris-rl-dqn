@@ -41,13 +41,23 @@ def from_game_bits(buttons):
     return int(f'{buttons:08b}'[::-1], 2)
 
 
+class ObservationFault(RuntimeError, ValueError):
+    """Public RAM observation could not be decoded (e.g. corrupted BCD counters).
+
+    RuntimeError routes it through evaluate's durable (AssertionError,
+    RuntimeError) controller-error path; ValueError keeps existing callers and
+    tests that expect ValueError unchanged. This is a decode failure, not a
+    hardware crash diagnosis.
+    """
+
+
 def bcd(data):
     """Little-endian packed decimal, rejecting invalid decimal nibbles."""
     result = 0
     for index, byte in enumerate(data):
         byte = int(byte)
         if byte & 15 > 9 or byte >> 4 > 9:
-            raise ValueError(f'Invalid packed decimal byte {byte:02x}')
+            raise ObservationFault(f'Invalid packed decimal byte {byte:02x}')
         result += ((byte >> 4) * 10 + (byte & 15)) * 100**index
     return result
 

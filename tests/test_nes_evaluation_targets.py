@@ -25,7 +25,7 @@ class EvaluationTargetTests(unittest.TestCase):
         from nes_original.learn import evaluate
         from nes_original.parallel_evaluate import evaluate_parallel
         factory = Mock()
-        for target in (None,False,True,18,0,-1,256,30.0,'255'):
+        for target in (None,False,True,18,0,-1,10**9+1,30.0,'255'):
             with self.subTest(target=target):
                 with self.assertRaisesRegex(ValueError,'target_level'):
                     evaluate(None,self.output/'invalid',target_level=target,game_factory=factory)

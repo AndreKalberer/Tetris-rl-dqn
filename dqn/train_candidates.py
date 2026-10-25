@@ -14,7 +14,6 @@ import gymnasium as gym
 import numpy as np
 import torch
 from torch import nn
-import tetris_gymnasium.envs  # registration
 
 from tetris_macro_env import TetrisPlacementEnv
 from dqn.candidates import ENCODING_VERSION, enumerate_candidates, heuristic_scores
@@ -50,6 +49,7 @@ class Config:
 
 
 def make_env(config, render_mode=None):
+    import tetris_gymnasium.envs  # registration; imported lazily so NES-only envs can import this module
     return TetrisPlacementEnv(gym.make('tetris_gymnasium/Tetris', gravity=False, render_mode=render_mode),
         include_hold=config.hold, next_n=config.next_n,
         reward_profile=config.reward_profile, observation_mode='board')
