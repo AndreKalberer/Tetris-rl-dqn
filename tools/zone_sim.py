@@ -144,6 +144,8 @@ def play(job):
             actual = max(0, controls[index].soft_points - int(rng.random() < .35))
             if actual < 2:
                 p = ZERO_LINE_CRASH[level].get(piece_class(controls[index].orientation), 0.)
+        if config.get('record_moves'):
+            moves[-1]['crash_p'] = round(float(p), 9)
         if p and rng.random() < p:
             return dict(seed=seed, result='crash', level=level, lines=lines, clear=int(cleared[index]),
                         alert=row.get('alert') or (row.get('accepted_risk') or {}).get('alert'), moves=moves)
