@@ -1,0 +1,76 @@
+Process 32740: "C:\Users\andre\Documents\Codex\2026-10-21\ex\work\nes-original-env\.venv\Scripts\python.exe" -m nes_original.learn --seeds 0 --steps 300 --check-every 300 --output runs/original-rl-feedback-smoke --status ../../outputs/nes-original-training-smoke-status-v2.json
+Python v3.13.15 (C:\Users\andre\AppData\Local\Programs\Python\Python313\python.exe)
+
+Thread 8652 (active+gil): "MainThread"
+    rotate_button (nes\actions.py:49)
+        Arguments:
+            current: 8
+            target: 11
+        Locals:
+            clockwise: 11104056550
+            counterclockwise: 0
+            pose: 8
+    command (nes_original\feedback.py:77)
+        Arguments:
+            self: <FeedbackController at 0x26222d62350>
+            obs: <Observation at 0x26227b3c9b0>
+        Locals:
+            frame: 3
+            navigation: 0
+            rotation: 0
+    execute (nes_original\learn.py:101)
+        Arguments:
+            game: <OriginalGame at 0x26222c08ec0>
+            plan: None
+            selected: 0
+        Locals:
+            controller: <FeedbackController at 0x26222d62350>
+            _: 3
+            before: <Observation at 0x26227b3c9b0>
+            after: <Observation at 0x26227b3d220>
+    advance (nes_original\learn.py:172)
+        Arguments:
+            self: <Trainer at 0x26222b1b0e0>
+        Locals:
+            replay_dir: <WindowsPath at 0x26227af1850>
+            c: <Config at 0x26222b1af90>
+            x: <numpy.ndarray at 0x26227bb0510>
+            epsilon: 0.049108000000000006
+            selected: 1
+            before: <Observation at 0x26227a3f020>
+            after: <Observation at 0x26227b3e990>
+            stats: {"plans": 0, "planning_seconds": 0, "planning_overruns": 0, "extra_idle_frames": 0, "runtime_latency_charged": False, ...}
+            _: 0
+    main (nes_original\learn.py:387)
+        Locals:
+            p: <ArgumentParser at 0x26222b1a510>
+            status: <function at 0x26222bc7420>
+            seed: 0
+            folder: <WindowsPath at 0x26222b7f6f0>
+            initial: [{"seed": 1001, "level": 18, "lines": 30, "score": 25011, "placements": 101, "success": False, "over": True, ...}, ...]
+            best: (0, 23.5, 19360)
+            last_history: 1
+            stream: <_io.TextIOWrapper at 0x26227b352a0>
+            row: {"seed": 435, "level": 18, "lines": 10, "score": 27670, "placements": 53, "decisions": 54, "completed_level29": False, ...}
+    <module> (nes_original\learn.py:428)
+    _run_code (<frozen runpy>:88)
+        Arguments:
+            code: <code at 0x26278aa5bc0>
+            run_globals: {"__name__": "__main__", "__doc__": "Original-game candidate Double DQN; all transitions/rewards run in nes-py.", ...}
+            init_globals: None
+            mod_name: "__main__"
+            mod_spec: <ModuleSpec at 0x262789439d0>
+            pkg_name: "nes_original"
+            script_name: None
+        Locals:
+            loader: <SourceFileLoader at 0x2627896c050>
+            fname: "C:\Users\andre\Documents\Codex\2026-10-21\ex\work\Tetris-rl-dqn\nes_original\learn.py"
+            cached: "C:\Users\andre\Documents\Codex\2026-10-21\ex\work\Tetris-rl-dqn\nes_original\__pycache__\learn.cpython-313.pyc"
+    _run_module_as_main (<frozen runpy>:204)
+        Arguments:
+            mod_name: "nes_original.learn"
+            alter_argv: True
+        Locals:
+            mod_spec: <ModuleSpec at 0x262789439d0>
+            code: <code at 0x26278aa5bc0>
+            main_globals: {"__name__": "__main__", "__doc__": "Original-game candidate Double DQN; all transitions/rewards run in nes-py.", ...}

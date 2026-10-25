@@ -1,0 +1,4 @@
+# Replay identity pins the exact bridge bytes; Windows checkouts must keep LF.
+nes_original/mesen_bridge.lua text eol=lf
+# These audit snapshots retain the byte hashes recorded by live deployments.
+evidence/modern-endurance-100h/*.py text eol=lf

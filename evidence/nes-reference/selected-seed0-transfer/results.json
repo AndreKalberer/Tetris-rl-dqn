@@ -1,0 +1,137 @@
+{
+  "protocol": "protocol.json",
+  "baseline": [
+    {
+      "seed": 1701,
+      "level": 30,
+      "lines": 240,
+      "score": 226421,
+      "backend": "MesenGame",
+      "placements": 602,
+      "success": true,
+      "over": false,
+      "error": null,
+      "censored": false,
+      "exact_ram_rgb_replay": true,
+      "controller": {
+        "plans": 602,
+        "planning_seconds": 6.050442200037651,
+        "planning_overruns": 0,
+        "extra_idle_frames": 0,
+        "runtime_latency_charged": true,
+        "target_misses": 0,
+        "proposal_board_differences": 0,
+        "board_audit_failures": 0,
+        "top_boundary_locks": 0,
+        "piece_type_differences": 0,
+        "action_interface": "Native feedback targets; approximate proposal features",
+        "reaction_frames": 3,
+        "navigation_frames": 48,
+        "horizontal_change_period": 1,
+        "horizontal_pulse_period": 2,
+        "rotation_period": 4
+      }
+    },
+    {
+      "seed": 1713,
+      "level": 30,
+      "lines": 240,
+      "score": 240189,
+      "backend": "MesenGame",
+      "placements": 602,
+      "success": true,
+      "over": false,
+      "error": null,
+      "censored": false,
+      "exact_ram_rgb_replay": true,
+      "controller": {
+        "plans": 602,
+        "planning_seconds": 5.905857700214256,
+        "planning_overruns": 0,
+        "extra_idle_frames": 0,
+        "runtime_latency_charged": true,
+        "target_misses": 0,
+        "proposal_board_differences": 0,
+        "board_audit_failures": 0,
+        "top_boundary_locks": 0,
+        "piece_type_differences": 0,
+        "action_interface": "Native feedback targets; approximate proposal features",
+        "reaction_frames": 3,
+        "navigation_frames": 48,
+        "horizontal_change_period": 1,
+        "horizontal_pulse_period": 2,
+        "rotation_period": 4
+      }
+    }
+  ],
+  "models": [
+    {
+      "training_seed": 0,
+      "selected_decisions": 10000,
+      "games": [
+        {
+          "seed": 1701,
+          "level": 30,
+          "lines": 240,
+          "score": 263040,
+          "backend": "MesenGame",
+          "placements": 603,
+          "success": true,
+          "over": false,
+          "error": null,
+          "censored": false,
+          "exact_ram_rgb_replay": true,
+          "controller": {
+            "plans": 603,
+            "planning_seconds": 6.305551099794684,
+            "planning_overruns": 0,
+            "extra_idle_frames": 0,
+            "runtime_latency_charged": true,
+            "target_misses": 0,
+            "proposal_board_differences": 0,
+            "board_audit_failures": 0,
+            "top_boundary_locks": 0,
+            "piece_type_differences": 0,
+            "action_interface": "Native feedback targets; approximate proposal features",
+            "reaction_frames": 3,
+            "navigation_frames": 48,
+            "horizontal_change_period": 1,
+            "horizontal_pulse_period": 2,
+            "rotation_period": 4
+          }
+        },
+        {
+          "seed": 1713,
+          "level": 18,
+          "lines": 92,
+          "score": 81569,
+          "backend": "MesenGame",
+          "placements": 259,
+          "success": false,
+          "over": true,
+          "error": null,
+          "censored": false,
+          "exact_ram_rgb_replay": true,
+          "controller": {
+            "plans": 261,
+            "planning_seconds": 2.4516720001993235,
+            "planning_overruns": 1,
+            "extra_idle_frames": 5,
+            "runtime_latency_charged": true,
+            "target_misses": 0,
+            "proposal_board_differences": 0,
+            "board_audit_failures": 0,
+            "top_boundary_locks": 0,
+            "piece_type_differences": 0,
+            "action_interface": "Native feedback targets; approximate proposal features",
+            "reaction_frames": 3,
+            "navigation_frames": 48,
+            "horizontal_change_period": 1,
+            "horizontal_pulse_period": 2,
+            "rotation_period": 4
+          }
+        }
+      ]
+    }
+  ]
+}

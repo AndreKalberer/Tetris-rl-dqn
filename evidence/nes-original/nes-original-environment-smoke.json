@@ -1,0 +1,39 @@
+{
+  "environment": "TetrisA-v0",
+  "gym_tetris": "4.0.0",
+  "nes_py": "9.0.1",
+  "gymnasium": "1.2.3",
+  "emulator_smoke_passed": true,
+  "seeded_replay_ram_exact": true,
+  "frames": 600,
+  "screen_shape": [
+    240,
+    256,
+    3
+  ],
+  "frame_counter_deltas": [
+    1
+  ],
+  "seconds": 1.7648522999952547,
+  "info": {
+    "current_piece": "Sh",
+    "number_of_lines": 0,
+    "score": 0,
+    "next_piece": "O",
+    "statistics": {
+      "T": 0,
+      "J": 0,
+      "Z": 0,
+      "O": 0,
+      "S": 1,
+      "L": 0,
+      "I": 0
+    },
+    "board_height": 0
+  },
+  "rom_md5": "ec58574d96bee8c8927884ae6e7a2508",
+  "rom_sha1": "77747840541bfc62a28a5957692a98c550bd6b2b",
+  "rom_sha256": "acab10f2dbad4d4ef5d56b31cd4cea208bb6e2e2c5dba5eb339d711ec04e3535",
+  "scope": "Original game image running in an existing NES emulator; reset wrapper performs RNG RAM initialization. Not yet a native-menu benchmark or hardware parity claim.",
+  "next_step": "Use raw nes-py with controller-driven menus and no post-reset RNG writes; validate original-game adapter before training"
+}

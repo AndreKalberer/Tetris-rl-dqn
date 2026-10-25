@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-10-22T13:37:06.3496928-06:00",
+  "sample_seconds": 6.0429147,
+  "worker_cpu_percent": 6.52882374791754,
+  "worker_resident_mib": 260.69921875,
+  "worker_private_commit_mib": 932.1484375,
+  "actual_priority": "Normal",
+  "actual_affinity_mask": 65515,
+  "machine_ram_gib": 13.809436798095703,
+  "machine_free_ram_gib": 2.51300048828125
+}

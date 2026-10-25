@@ -1,0 +1,82 @@
+{
+  "models": [
+    {
+      "seed": 0,
+      "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-074036\\training\\seed0\\best.pt",
+      "sha256": "c1c7f3f5f3c478d917ed613a2eed230fe24cd02ecd64a932fad610b2bf819a80",
+      "decisions": 5000,
+      "config": {
+        "seed": 0,
+        "capacity": 3000,
+        "batch_size": 64,
+        "learning_starts": 128,
+        "teacher_decisions": 256,
+        "train_every": 4,
+        "target_every": 500,
+        "gamma": 0.99,
+        "learning_rate": 5e-05,
+        "epsilon_start": 0.05,
+        "epsilon_final": 0.01,
+        "epsilon_steps": 10000,
+        "threads": 2
+      }
+    },
+    {
+      "seed": 1,
+      "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-074036\\training\\seed1\\best.pt",
+      "sha256": "bbf48897a51cf6a8f8044a7f488799a726e25da78a26f5205140afee04f939c7",
+      "decisions": 7500,
+      "config": {
+        "seed": 1,
+        "capacity": 3000,
+        "batch_size": 64,
+        "learning_starts": 128,
+        "teacher_decisions": 256,
+        "train_every": 4,
+        "target_every": 500,
+        "gamma": 0.99,
+        "learning_rate": 5e-05,
+        "epsilon_start": 0.05,
+        "epsilon_final": 0.01,
+        "epsilon_steps": 10000,
+        "threads": 2
+      }
+    },
+    {
+      "seed": 2,
+      "path": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\original-level29-20261022-074036\\training\\seed2\\best.pt",
+      "sha256": "a5ef9998463602ba1576fa7e88b086958f1e9666769046c11dd358565db70f6a",
+      "decisions": 5000,
+      "config": {
+        "seed": 2,
+        "capacity": 3000,
+        "batch_size": 64,
+        "learning_starts": 128,
+        "teacher_decisions": 256,
+        "train_every": 4,
+        "target_every": 500,
+        "gamma": 0.99,
+        "learning_rate": 5e-05,
+        "epsilon_start": 0.05,
+        "epsilon_final": 0.01,
+        "epsilon_steps": 10000,
+        "threads": 2
+      }
+    }
+  ],
+  "test_menu_wait_seeds": [
+    1601,
+    1613,
+    1627
+  ],
+  "starting_level": 18,
+  "target_level": 30,
+  "runtime_latency_charged": true,
+  "selected_only_on_prior_validation": [
+    1001,
+    1013
+  ],
+  "cpu_mask": 3,
+  "scope": "Small fresh-start nes-py pilot, not20-game acceptance or hardware-fidelity certification",
+  "independence": "Independent training seeds; paired initial starts, timing-dependent later piece sequences"
+}

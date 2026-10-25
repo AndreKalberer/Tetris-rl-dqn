@@ -1,0 +1,146 @@
+{
+  "seed": 92000,
+  "placements": 38666,
+  "lines": 15464,
+  "natural_top_out": false,
+  "alive_at_stop": true,
+  "stop_reason": "wall_time_budget",
+  "simulated_seconds": 26628.65,
+  "replay_verified": true,
+  "planning_overruns": 0,
+  "rejected_inputs": 0,
+  "path_mismatches": 0,
+  "scope": "One preselected game on the documented offline ruleset; not an average or universal maximum.",
+  "interpretation": "Lower bound: game was alive when measurement stopped.",
+  "board_health": {
+    "first_1000": {
+      "placements": 1000,
+      "mean_max_height": 5.002,
+      "highest_stack": 9,
+      "mean_holes": 0.042,
+      "maximum_holes": 1
+    },
+    "last_1000": {
+      "placements": 1000,
+      "mean_max_height": 5.178,
+      "highest_stack": 10,
+      "mean_holes": 0.098,
+      "maximum_holes": 2
+    },
+    "definition": "After each lock and line clear: tallest occupied column, and empty cells below occupied cells; units are board cells."
+  },
+  "segments": [
+    {
+      "protocol": {
+        "seed": 92000,
+        "beam": 4,
+        "checkpoint": "models\\seed1-100000.pt",
+        "rules": {
+          "version": "offline-v1",
+          "width": 10,
+          "visible_rows": 20,
+          "hidden_rows": 4,
+          "fps": 60,
+          "gravity_frames": 30,
+          "lock_frames": 30,
+          "max_lock_resets": 15,
+          "control_frames": 3,
+          "reaction_frames": 30,
+          "target_lines": null
+        },
+        "policy_sha256": "967697d12ea47134ab16019061585473d66c4f6734cd82986d3508b851b7b366",
+        "wall_budget_seconds": 1800.0,
+        "parent_segment": null,
+        "starting_frame": 0,
+        "line_limit": null,
+        "placement_limit": null,
+        "simulation_frame_limit": null,
+        "source_sha256": {
+          "offline/engine.py": "323dd13c983fcf215bc4687741b1885136cdaa76d7f61282f9296996d5254ee1",
+          "offline/bot.py": "fd6e1ca4952d774328065dcfe0893ef7e66883abfc8fd73316b2b21a6995abc8",
+          "offline/endurance.py": "55c576ba370e616e6e14609b3ecb8091e524f2d8f1010a95e726a48dd2157e7e"
+        },
+        "scope": "One preselected piece sequence; natural top-out measures this game, not average strength"
+      },
+      "result": {
+        "state": "unfinished",
+        "pid": 19968,
+        "seed": 92000,
+        "beam": 4,
+        "placements": 1900,
+        "lines": 757,
+        "frames": 78616,
+        "simulation_seconds": 1310.2666666666667,
+        "wall_seconds": 481.5163947999972,
+        "process_cpu_seconds": 454.71875,
+        "wall_budget_seconds": 1800.0,
+        "planning_overruns": 0,
+        "rejected_inputs": 0,
+        "path_mismatches": 0,
+        "error_type": "MemoryError",
+        "error": "",
+        "stop_reason": "execution_error",
+        "segment_frames": 78616,
+        "final_board_sha256": "b85cca124608d404e957c28a707221ea06396fc54c1a3af49d3ae9f9a880878b",
+        "alive_at_stop": true,
+        "counts_valid": true,
+        "parent_segment": null
+      }
+    },
+    {
+      "protocol": {
+        "seed": 92000,
+        "beam": 4,
+        "checkpoint": "models\\seed1-100000.pt",
+        "rules": {
+          "version": "offline-v1",
+          "width": 10,
+          "visible_rows": 20,
+          "hidden_rows": 4,
+          "fps": 60,
+          "gravity_frames": 30,
+          "lock_frames": 30,
+          "max_lock_resets": 15,
+          "control_frames": 3,
+          "reaction_frames": 30,
+          "target_lines": null
+        },
+        "policy_sha256": "967697d12ea47134ab16019061585473d66c4f6734cd82986d3508b851b7b366",
+        "wall_budget_seconds": 1318.0,
+        "parent_segment": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\offline-endurance-v1\\seed92000",
+        "starting_frame": 78616,
+        "line_limit": null,
+        "placement_limit": null,
+        "simulation_frame_limit": null,
+        "source_sha256": {
+          "offline/engine.py": "323dd13c983fcf215bc4687741b1885136cdaa76d7f61282f9296996d5254ee1",
+          "offline/bot.py": "fd6e1ca4952d774328065dcfe0893ef7e66883abfc8fd73316b2b21a6995abc8",
+          "offline/endurance.py": "50014156ac6eaa970660bb334b3f1d1d1fc1b01eec602bd014b30757bd707820"
+        },
+        "scope": "One preselected piece sequence; natural top-out measures this game, not average strength"
+      },
+      "result": {
+        "state": "unfinished",
+        "pid": 30880,
+        "seed": 92000,
+        "beam": 4,
+        "placements": 38666,
+        "lines": 15464,
+        "frames": 1597719,
+        "simulation_seconds": 26628.65,
+        "wall_seconds": 1318.0335194000072,
+        "process_cpu_seconds": 2593.5,
+        "wall_budget_seconds": 1318.0,
+        "planning_overruns": 0,
+        "rejected_inputs": 0,
+        "path_mismatches": 0,
+        "stop_reason": "wall_time_budget",
+        "segment_frames": 1519103,
+        "final_board_sha256": "5b278cb56610eeaf88c418822837c5a3c920da15c0e21002983cd5b64f82b67f",
+        "alive_at_stop": true,
+        "counts_valid": true,
+        "parent_segment": "C:\\Users\\andre\\Documents\\Codex\\2026-10-21\\ex\\work\\Tetris-rl-dqn\\runs\\offline-endurance-v1\\seed92000"
+      }
+    }
+  ]
+}

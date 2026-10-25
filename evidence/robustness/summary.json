@@ -1,0 +1,356 @@
+{
+  "scope": "Three training seeds; five paired evaluation streams; five retained snapshots",
+  "placement_cap": 5000,
+  "evaluation_seeds": [
+    70000,
+    70001,
+    70002,
+    70003,
+    70004
+  ],
+  "models": [
+    {
+      "model": "seed0-60000",
+      "training_seed": 0,
+      "training_steps": 60000,
+      "by_beam": {
+        "1": {
+          "mean_lines_before_death_or_cap": 1077.2,
+          "median_lines_before_death_or_cap": 641,
+          "min_lines": 150,
+          "max_lines": 1997,
+          "naturally_completed": 3,
+          "still_alive_at_cap": 2,
+          "conditional_mean_completed_lines": 464.3333333333333,
+          "aggregate_placements_per_second": 328.0389615084365,
+          "lines_by_evaluation_seed": {
+            "70000": 641,
+            "70001": 1996,
+            "70002": 150,
+            "70003": 602,
+            "70004": 1997
+          }
+        },
+        "4": {
+          "mean_lines_before_death_or_cap": 1997,
+          "median_lines_before_death_or_cap": 1997,
+          "min_lines": 1996,
+          "max_lines": 1998,
+          "naturally_completed": 0,
+          "still_alive_at_cap": 5,
+          "conditional_mean_completed_lines": null,
+          "aggregate_placements_per_second": 108.18912756556078,
+          "lines_by_evaluation_seed": {
+            "70000": 1998,
+            "70001": 1996,
+            "70002": 1997,
+            "70003": 1998,
+            "70004": 1996
+          }
+        }
+      },
+      "paired": [
+        {
+          "seed": 70000,
+          "bounded_line_difference": 1357
+        },
+        {
+          "seed": 70001,
+          "bounded_line_difference": 0
+        },
+        {
+          "seed": 70002,
+          "bounded_line_difference": 1847
+        },
+        {
+          "seed": 70003,
+          "bounded_line_difference": 1396
+        },
+        {
+          "seed": 70004,
+          "bounded_line_difference": -1
+        }
+      ],
+      "policy_sha256": "e23f50d94cf373b70aeba4e4e09b4d994c40921f5287719c63ef89d16d207dc5"
+    },
+    {
+      "model": "seed1-60000",
+      "training_seed": 1,
+      "training_steps": 60000,
+      "by_beam": {
+        "1": {
+          "mean_lines_before_death_or_cap": 1640,
+          "median_lines_before_death_or_cap": 1996,
+          "min_lines": 949,
+          "max_lines": 1998,
+          "naturally_completed": 2,
+          "still_alive_at_cap": 3,
+          "conditional_mean_completed_lines": 1104.5,
+          "aggregate_placements_per_second": 333.5627950460225,
+          "lines_by_evaluation_seed": {
+            "70000": 949,
+            "70001": 1996,
+            "70002": 1260,
+            "70003": 1998,
+            "70004": 1997
+          }
+        },
+        "4": {
+          "mean_lines_before_death_or_cap": 1997.8,
+          "median_lines_before_death_or_cap": 1998,
+          "min_lines": 1997,
+          "max_lines": 1998,
+          "naturally_completed": 0,
+          "still_alive_at_cap": 5,
+          "conditional_mean_completed_lines": null,
+          "aggregate_placements_per_second": 103.27141447689107,
+          "lines_by_evaluation_seed": {
+            "70000": 1998,
+            "70001": 1998,
+            "70002": 1998,
+            "70003": 1997,
+            "70004": 1998
+          }
+        }
+      },
+      "paired": [
+        {
+          "seed": 70000,
+          "bounded_line_difference": 1049
+        },
+        {
+          "seed": 70001,
+          "bounded_line_difference": 2
+        },
+        {
+          "seed": 70002,
+          "bounded_line_difference": 738
+        },
+        {
+          "seed": 70003,
+          "bounded_line_difference": -1
+        },
+        {
+          "seed": 70004,
+          "bounded_line_difference": 1
+        }
+      ],
+      "policy_sha256": "28f445d9286b014c5b09b53b0116efcbf8c159dbd817bdfb376b7ff1f925715e"
+    },
+    {
+      "model": "seed1-100000",
+      "training_seed": 1,
+      "training_steps": 100000,
+      "by_beam": {
+        "1": {
+          "mean_lines_before_death_or_cap": 1997.4,
+          "median_lines_before_death_or_cap": 1998,
+          "min_lines": 1995,
+          "max_lines": 1999,
+          "naturally_completed": 0,
+          "still_alive_at_cap": 5,
+          "conditional_mean_completed_lines": null,
+          "aggregate_placements_per_second": 302.51023074174185,
+          "lines_by_evaluation_seed": {
+            "70000": 1999,
+            "70001": 1998,
+            "70002": 1999,
+            "70003": 1996,
+            "70004": 1995
+          }
+        },
+        "4": {
+          "mean_lines_before_death_or_cap": 1997.2,
+          "median_lines_before_death_or_cap": 1997,
+          "min_lines": 1996,
+          "max_lines": 1998,
+          "naturally_completed": 0,
+          "still_alive_at_cap": 5,
+          "conditional_mean_completed_lines": null,
+          "aggregate_placements_per_second": 96.42929420745727,
+          "lines_by_evaluation_seed": {
+            "70000": 1998,
+            "70001": 1996,
+            "70002": 1998,
+            "70003": 1997,
+            "70004": 1997
+          }
+        }
+      },
+      "paired": [
+        {
+          "seed": 70000,
+          "bounded_line_difference": -1
+        },
+        {
+          "seed": 70001,
+          "bounded_line_difference": -2
+        },
+        {
+          "seed": 70002,
+          "bounded_line_difference": -1
+        },
+        {
+          "seed": 70003,
+          "bounded_line_difference": 1
+        },
+        {
+          "seed": 70004,
+          "bounded_line_difference": 2
+        }
+      ],
+      "policy_sha256": "967697d12ea47134ab16019061585473d66c4f6734cd82986d3508b851b7b366"
+    },
+    {
+      "model": "seed2-60000",
+      "training_seed": 2,
+      "training_steps": 60000,
+      "by_beam": {
+        "1": {
+          "mean_lines_before_death_or_cap": 1997.4,
+          "median_lines_before_death_or_cap": 1997,
+          "min_lines": 1997,
+          "max_lines": 1998,
+          "naturally_completed": 0,
+          "still_alive_at_cap": 5,
+          "conditional_mean_completed_lines": null,
+          "aggregate_placements_per_second": 310.46094528965756,
+          "lines_by_evaluation_seed": {
+            "70000": 1997,
+            "70001": 1997,
+            "70002": 1998,
+            "70003": 1998,
+            "70004": 1997
+          }
+        },
+        "4": {
+          "mean_lines_before_death_or_cap": 1997.8,
+          "median_lines_before_death_or_cap": 1998,
+          "min_lines": 1997,
+          "max_lines": 1999,
+          "naturally_completed": 0,
+          "still_alive_at_cap": 5,
+          "conditional_mean_completed_lines": null,
+          "aggregate_placements_per_second": 98.14865944741217,
+          "lines_by_evaluation_seed": {
+            "70000": 1999,
+            "70001": 1997,
+            "70002": 1997,
+            "70003": 1998,
+            "70004": 1998
+          }
+        }
+      },
+      "paired": [
+        {
+          "seed": 70000,
+          "bounded_line_difference": 2
+        },
+        {
+          "seed": 70001,
+          "bounded_line_difference": 0
+        },
+        {
+          "seed": 70002,
+          "bounded_line_difference": -1
+        },
+        {
+          "seed": 70003,
+          "bounded_line_difference": 0
+        },
+        {
+          "seed": 70004,
+          "bounded_line_difference": 1
+        }
+      ],
+      "policy_sha256": "f73d6da8dbb6db14b57d2faec638b777415724882ef7943f5345b70faa552358"
+    },
+    {
+      "model": "seed2-100000",
+      "training_seed": 2,
+      "training_steps": 100000,
+      "by_beam": {
+        "1": {
+          "mean_lines_before_death_or_cap": 1673.4,
+          "median_lines_before_death_or_cap": 1994,
+          "min_lines": 389,
+          "max_lines": 1995,
+          "naturally_completed": 1,
+          "still_alive_at_cap": 4,
+          "conditional_mean_completed_lines": 389,
+          "aggregate_placements_per_second": 312.17315842954997,
+          "lines_by_evaluation_seed": {
+            "70000": 1995,
+            "70001": 389,
+            "70002": 1995,
+            "70003": 1994,
+            "70004": 1994
+          }
+        },
+        "4": {
+          "mean_lines_before_death_or_cap": 1995.6,
+          "median_lines_before_death_or_cap": 1996,
+          "min_lines": 1994,
+          "max_lines": 1997,
+          "naturally_completed": 0,
+          "still_alive_at_cap": 5,
+          "conditional_mean_completed_lines": null,
+          "aggregate_placements_per_second": 99.97951883563951,
+          "lines_by_evaluation_seed": {
+            "70000": 1996,
+            "70001": 1995,
+            "70002": 1997,
+            "70003": 1994,
+            "70004": 1996
+          }
+        }
+      },
+      "paired": [
+        {
+          "seed": 70000,
+          "bounded_line_difference": 1
+        },
+        {
+          "seed": 70001,
+          "bounded_line_difference": 1606
+        },
+        {
+          "seed": 70002,
+          "bounded_line_difference": 2
+        },
+        {
+          "seed": 70003,
+          "bounded_line_difference": 0
+        },
+        {
+          "seed": 70004,
+          "bounded_line_difference": 2
+        }
+      ],
+      "policy_sha256": "81b1aead9dd7b284c4d2138184e0e112d97b6cc3d6e88e4b0add62385aee92fb"
+    }
+  ],
+  "matched_60k": {
+    "independent_training_seeds": [
+      0,
+      1,
+      2
+    ],
+    "bounded_mean_by_beam": {
+      "1": 1571.5333333333333,
+      "4": 1997.5333333333333
+    },
+    "survivors_by_beam": {
+      "1": 10,
+      "4": 15
+    },
+    "model_stream_pairs": 15
+  },
+  "limits": [
+    "Capped games are censored; bounded means are not full-game survival means.",
+    "The same five piece streams are reused across agents, so 15 pairs are not 15 independent streams.",
+    "60k and 100k snapshots of the same seed are correlated; only three independent training runs exist.",
+    "No hyperparameter tuning used this evaluation set; no comparison to the unavailable historical checkpoint.",
+    "Concurrent CPU jobs affect timing; runtime numbers describe these runs, not a controlled hardware benchmark."
+  ]
+}

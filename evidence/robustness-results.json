@@ -1,0 +1,1148 @@
+{
+  "summary": {
+    "scope": "Three training seeds; five paired evaluation streams; five retained snapshots",
+    "placement_cap": 5000,
+    "evaluation_seeds": [
+      70000,
+      70001,
+      70002,
+      70003,
+      70004
+    ],
+    "models": [
+      {
+        "model": "seed0-60000",
+        "training_seed": 0,
+        "training_steps": 60000,
+        "by_beam": {
+          "1": {
+            "mean_lines_before_death_or_cap": 1077.2,
+            "median_lines_before_death_or_cap": 641,
+            "min_lines": 150,
+            "max_lines": 1997,
+            "naturally_completed": 3,
+            "still_alive_at_cap": 2,
+            "conditional_mean_completed_lines": 464.3333333333333,
+            "aggregate_placements_per_second": 328.0389615084365,
+            "lines_by_evaluation_seed": {
+              "70000": 641,
+              "70001": 1996,
+              "70002": 150,
+              "70003": 602,
+              "70004": 1997
+            }
+          },
+          "4": {
+            "mean_lines_before_death_or_cap": 1997,
+            "median_lines_before_death_or_cap": 1997,
+            "min_lines": 1996,
+            "max_lines": 1998,
+            "naturally_completed": 0,
+            "still_alive_at_cap": 5,
+            "conditional_mean_completed_lines": null,
+            "aggregate_placements_per_second": 108.18912756556078,
+            "lines_by_evaluation_seed": {
+              "70000": 1998,
+              "70001": 1996,
+              "70002": 1997,
+              "70003": 1998,
+              "70004": 1996
+            }
+          }
+        },
+        "paired": [
+          {
+            "seed": 70000,
+            "bounded_line_difference": 1357
+          },
+          {
+            "seed": 70001,
+            "bounded_line_difference": 0
+          },
+          {
+            "seed": 70002,
+            "bounded_line_difference": 1847
+          },
+          {
+            "seed": 70003,
+            "bounded_line_difference": 1396
+          },
+          {
+            "seed": 70004,
+            "bounded_line_difference": -1
+          }
+        ],
+        "policy_sha256": "e23f50d94cf373b70aeba4e4e09b4d994c40921f5287719c63ef89d16d207dc5"
+      },
+      {
+        "model": "seed1-60000",
+        "training_seed": 1,
+        "training_steps": 60000,
+        "by_beam": {
+          "1": {
+            "mean_lines_before_death_or_cap": 1640,
+            "median_lines_before_death_or_cap": 1996,
+            "min_lines": 949,
+            "max_lines": 1998,
+            "naturally_completed": 2,
+            "still_alive_at_cap": 3,
+            "conditional_mean_completed_lines": 1104.5,
+            "aggregate_placements_per_second": 333.5627950460225,
+            "lines_by_evaluation_seed": {
+              "70000": 949,
+              "70001": 1996,
+              "70002": 1260,
+              "70003": 1998,
+              "70004": 1997
+            }
+          },
+          "4": {
+            "mean_lines_before_death_or_cap": 1997.8,
+            "median_lines_before_death_or_cap": 1998,
+            "min_lines": 1997,
+            "max_lines": 1998,
+            "naturally_completed": 0,
+            "still_alive_at_cap": 5,
+            "conditional_mean_completed_lines": null,
+            "aggregate_placements_per_second": 103.27141447689107,
+            "lines_by_evaluation_seed": {
+              "70000": 1998,
+              "70001": 1998,
+              "70002": 1998,
+              "70003": 1997,
+              "70004": 1998
+            }
+          }
+        },
+        "paired": [
+          {
+            "seed": 70000,
+            "bounded_line_difference": 1049
+          },
+          {
+            "seed": 70001,
+            "bounded_line_difference": 2
+          },
+          {
+            "seed": 70002,
+            "bounded_line_difference": 738
+          },
+          {
+            "seed": 70003,
+            "bounded_line_difference": -1
+          },
+          {
+            "seed": 70004,
+            "bounded_line_difference": 1
+          }
+        ],
+        "policy_sha256": "28f445d9286b014c5b09b53b0116efcbf8c159dbd817bdfb376b7ff1f925715e"
+      },
+      {
+        "model": "seed1-100000",
+        "training_seed": 1,
+        "training_steps": 100000,
+        "by_beam": {
+          "1": {
+            "mean_lines_before_death_or_cap": 1997.4,
+            "median_lines_before_death_or_cap": 1998,
+            "min_lines": 1995,
+            "max_lines": 1999,
+            "naturally_completed": 0,
+            "still_alive_at_cap": 5,
+            "conditional_mean_completed_lines": null,
+            "aggregate_placements_per_second": 302.51023074174185,
+            "lines_by_evaluation_seed": {
+              "70000": 1999,
+              "70001": 1998,
+              "70002": 1999,
+              "70003": 1996,
+              "70004": 1995
+            }
+          },
+          "4": {
+            "mean_lines_before_death_or_cap": 1997.2,
+            "median_lines_before_death_or_cap": 1997,
+            "min_lines": 1996,
+            "max_lines": 1998,
+            "naturally_completed": 0,
+            "still_alive_at_cap": 5,
+            "conditional_mean_completed_lines": null,
+            "aggregate_placements_per_second": 96.42929420745727,
+            "lines_by_evaluation_seed": {
+              "70000": 1998,
+              "70001": 1996,
+              "70002": 1998,
+              "70003": 1997,
+              "70004": 1997
+            }
+          }
+        },
+        "paired": [
+          {
+            "seed": 70000,
+            "bounded_line_difference": -1
+          },
+          {
+            "seed": 70001,
+            "bounded_line_difference": -2
+          },
+          {
+            "seed": 70002,
+            "bounded_line_difference": -1
+          },
+          {
+            "seed": 70003,
+            "bounded_line_difference": 1
+          },
+          {
+            "seed": 70004,
+            "bounded_line_difference": 2
+          }
+        ],
+        "policy_sha256": "967697d12ea47134ab16019061585473d66c4f6734cd82986d3508b851b7b366"
+      },
+      {
+        "model": "seed2-60000",
+        "training_seed": 2,
+        "training_steps": 60000,
+        "by_beam": {
+          "1": {
+            "mean_lines_before_death_or_cap": 1997.4,
+            "median_lines_before_death_or_cap": 1997,
+            "min_lines": 1997,
+            "max_lines": 1998,
+            "naturally_completed": 0,
+            "still_alive_at_cap": 5,
+            "conditional_mean_completed_lines": null,
+            "aggregate_placements_per_second": 310.46094528965756,
+            "lines_by_evaluation_seed": {
+              "70000": 1997,
+              "70001": 1997,
+              "70002": 1998,
+              "70003": 1998,
+              "70004": 1997
+            }
+          },
+          "4": {
+            "mean_lines_before_death_or_cap": 1997.8,
+            "median_lines_before_death_or_cap": 1998,
+            "min_lines": 1997,
+            "max_lines": 1999,
+            "naturally_completed": 0,
+            "still_alive_at_cap": 5,
+            "conditional_mean_completed_lines": null,
+            "aggregate_placements_per_second": 98.14865944741217,
+            "lines_by_evaluation_seed": {
+              "70000": 1999,
+              "70001": 1997,
+              "70002": 1997,
+              "70003": 1998,
+              "70004": 1998
+            }
+          }
+        },
+        "paired": [
+          {
+            "seed": 70000,
+            "bounded_line_difference": 2
+          },
+          {
+            "seed": 70001,
+            "bounded_line_difference": 0
+          },
+          {
+            "seed": 70002,
+            "bounded_line_difference": -1
+          },
+          {
+            "seed": 70003,
+            "bounded_line_difference": 0
+          },
+          {
+            "seed": 70004,
+            "bounded_line_difference": 1
+          }
+        ],
+        "policy_sha256": "f73d6da8dbb6db14b57d2faec638b777415724882ef7943f5345b70faa552358"
+      },
+      {
+        "model": "seed2-100000",
+        "training_seed": 2,
+        "training_steps": 100000,
+        "by_beam": {
+          "1": {
+            "mean_lines_before_death_or_cap": 1673.4,
+            "median_lines_before_death_or_cap": 1994,
+            "min_lines": 389,
+            "max_lines": 1995,
+            "naturally_completed": 1,
+            "still_alive_at_cap": 4,
+            "conditional_mean_completed_lines": 389,
+            "aggregate_placements_per_second": 312.17315842954997,
+            "lines_by_evaluation_seed": {
+              "70000": 1995,
+              "70001": 389,
+              "70002": 1995,
+              "70003": 1994,
+              "70004": 1994
+            }
+          },
+          "4": {
+            "mean_lines_before_death_or_cap": 1995.6,
+            "median_lines_before_death_or_cap": 1996,
+            "min_lines": 1994,
+            "max_lines": 1997,
+            "naturally_completed": 0,
+            "still_alive_at_cap": 5,
+            "conditional_mean_completed_lines": null,
+            "aggregate_placements_per_second": 99.97951883563951,
+            "lines_by_evaluation_seed": {
+              "70000": 1996,
+              "70001": 1995,
+              "70002": 1997,
+              "70003": 1994,
+              "70004": 1996
+            }
+          }
+        },
+        "paired": [
+          {
+            "seed": 70000,
+            "bounded_line_difference": 1
+          },
+          {
+            "seed": 70001,
+            "bounded_line_difference": 1606
+          },
+          {
+            "seed": 70002,
+            "bounded_line_difference": 2
+          },
+          {
+            "seed": 70003,
+            "bounded_line_difference": 0
+          },
+          {
+            "seed": 70004,
+            "bounded_line_difference": 2
+          }
+        ],
+        "policy_sha256": "81b1aead9dd7b284c4d2138184e0e112d97b6cc3d6e88e4b0add62385aee92fb"
+      }
+    ],
+    "matched_60k": {
+      "independent_training_seeds": [
+        0,
+        1,
+        2
+      ],
+      "bounded_mean_by_beam": {
+        "1": 1571.5333333333333,
+        "4": 1997.5333333333333
+      },
+      "survivors_by_beam": {
+        "1": 10,
+        "4": 15
+      },
+      "model_stream_pairs": 15
+    },
+    "limits": [
+      "Capped games are censored; bounded means are not full-game survival means.",
+      "The same five piece streams are reused across agents, so 15 pairs are not 15 independent streams.",
+      "60k and 100k snapshots of the same seed are correlated; only three independent training runs exist.",
+      "No hyperparameter tuning used this evaluation set; no comparison to the unavailable historical checkpoint.",
+      "Concurrent CPU jobs affect timing; runtime numbers describe these runs, not a controlled hardware benchmark."
+    ]
+  },
+  "raw": {
+    "protocol": {
+      "phase": "independent-seed robustness",
+      "train_seeds": [
+        1,
+        2
+      ],
+      "target_steps": 100000,
+      "retained_steps": [
+        60000,
+        100000
+      ],
+      "frozen_reference": {
+        "train_seed": 0,
+        "steps": 60000
+      },
+      "evaluation_seeds": [
+        70000,
+        70001,
+        70002,
+        70003,
+        70004
+      ],
+      "placement_cap": 5000,
+      "beams": [
+        1,
+        4
+      ],
+      "models": [
+        "seed0-60000",
+        "seed1-60000",
+        "seed1-100000",
+        "seed2-60000",
+        "seed2-100000"
+      ],
+      "hyperparameters": "Default Config, seed only differs; one-ply epsilon-greedy training",
+      "source_sha256": {
+        "tetris_macro_env.py": "26fac0397833e979c45507a3c8c97369bfe09b8887fe071c28f6cf06fb2f7832",
+        "dqn\\benchmark_lookahead.py": "7845e9eb8ca2e94a0e92e5e7d59fd680e8513583f0fcdfe206ef6017fd3008c4",
+        "dqn\\candidates.py": "1162b5fd82956e14c3d32ee31ebebbd02f196d71e32bfb7f245cb06ed59d17bc",
+        "dqn\\checkpoint_metadata.py": "1bd5d30b5b6a926f82625c9fff60296290f6014776edb5fe2f7f5d8902de0375",
+        "dqn\\diagnose_policy_dqn.py": "9181f31b90f088898f94a2237c3ef4a74daffd5f1bb600e5c3d1dee0d161ef8a",
+        "dqn\\enjoy_local_dqn.py": "b8cf199492b1c734abfa766054658f6059ca03d17dad7b19e5ffdbefc3b2c651",
+        "dqn\\episode_stats.py": "f170ff057a7564871c6f51d3106f872090b49211cf36d2b057268c23ae5b83cf",
+        "dqn\\eval_lines.py": "48579a24f00d55388432739e2c9b23cff456fd19df58905e73eb6cf72e61d8b1",
+        "dqn\\lookahead.py": "fb1796dc93e47490ff4cfb5bb07765542a55ff9add93a32a8b1095b6a05b03cf",
+        "dqn\\play_candidates.py": "8668088094ee7c8722c299ae934f61ab94340776f4df359a11058c60a199a37f",
+        "dqn\\robust_train.py": "7883dcb04f2ee31f09d06219525769b951813be8b9f9b8569387d300c6186558",
+        "dqn\\train_candidates.py": "dc9acd44aa85f0b30666ba3898428c9a18dc333e73eebce8aeee007c6f7d05c4",
+        "dqn\\train_dqn_server.py": "459418b403e2ed5b6f0ce4fe786c4215ec18f39c49c7d643f377dfa0def208f2"
+      },
+      "selection": "No tuning based on these results; keep all snapshot outcomes, including failures",
+      "censoring": "Report bounded line counts and survivors; capped games are not completed-game averages",
+      "limits": "Five evaluation streams and three training seeds; not an elite or historical checkpoint comparison",
+      "evaluation_source_sha256": {
+        "dqn\\robust_eval.py": "7344bf08aac2e3cd69a9e8797f9cb6da6f30ae00c6e86b41a4de3741b40d99a0",
+        "dqn\\benchmark_lookahead.py": "0d9490a71583008dfc41a32c34a7c30c69519bb28c4b4eb8971452dd6fe8f70d"
+      }
+    },
+    "scheduling": {
+      "reason": "Training is finished; evaluate remaining independent models concurrently",
+      "selected_origins": {
+        "seed0-60000": "evaluation",
+        "seed1-60000": "evaluation",
+        "seed1-100000": "evaluation-parallel",
+        "seed2-60000": "evaluation-parallel",
+        "seed2-100000": "evaluation-parallel"
+      },
+      "changes": "Scheduling only. All five models, seeds, placement caps, beams, and weights remain as predeclared.",
+      "state": "sequential_stop_requested"
+    },
+    "models": [
+      {
+        "scope": "Bounded development comparison, one frozen training seed; no historical claim",
+        "checkpoint": "runs\\candidates-60k\\policy.pt",
+        "config": {
+          "seed": 0,
+          "next_n": 5,
+          "hold": true,
+          "board_input": true,
+          "reward_profile": "balanced",
+          "gamma": 0.99,
+          "learning_rate": 0.0003,
+          "capacity": 5000,
+          "batch_size": 32,
+          "learning_starts": 1000,
+          "train_every": 4,
+          "target_every": 500,
+          "epsilon_start": 1.0,
+          "epsilon_final": 0.05,
+          "epsilon_steps": 15000,
+          "threads": 2
+        },
+        "placement_cap": 5000,
+        "episodes": [
+          {
+            "seed": 70000,
+            "beam": 1,
+            "lines": 641,
+            "placements": 1638,
+            "completed": true,
+            "capped": false,
+            "seconds": 6.738025099999504,
+            "placements_per_second": 243.09793681239339,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70000,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 57.586713900003815,
+            "placements_per_second": 86.8255828711155,
+            "evaluated_second_moves": 899155
+          },
+          {
+            "seed": 70001,
+            "beam": 1,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 17.149978699999338,
+            "placements_per_second": 291.5455515988596,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70001,
+            "beam": 4,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 54.113263899998856,
+            "placements_per_second": 92.39878801692657,
+            "evaluated_second_moves": 896649
+          },
+          {
+            "seed": 70002,
+            "beam": 1,
+            "lines": 150,
+            "placements": 411,
+            "completed": true,
+            "capped": false,
+            "seconds": 1.3455868000019109,
+            "placements_per_second": 305.4429487561979,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70002,
+            "beam": 4,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 41.30606990000524,
+            "placements_per_second": 121.04758482479994,
+            "evaluated_second_moves": 897054
+          },
+          {
+            "seed": 70003,
+            "beam": 1,
+            "lines": 602,
+            "placements": 1541,
+            "completed": true,
+            "capped": false,
+            "seconds": 3.7997309000056703,
+            "placements_per_second": 405.5550354888817,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70003,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 39.72910469999624,
+            "placements_per_second": 125.85232004990218,
+            "evaluated_second_moves": 903062
+          },
+          {
+            "seed": 70004,
+            "beam": 1,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 12.394684300001245,
+            "placements_per_second": 403.3987376346082,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70004,
+            "beam": 4,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 38.341671700000006,
+            "placements_per_second": 130.40641626483904,
+            "evaluated_second_moves": 897311
+          }
+        ],
+        "model": "seed0-60000",
+        "policy_sha256": "e23f50d94cf373b70aeba4e4e09b4d994c40921f5287719c63ef89d16d207dc5",
+        "origin": "evaluation"
+      },
+      {
+        "scope": "Bounded development comparison, one frozen training seed; no historical claim",
+        "checkpoint": "runs\\robustness-v1\\seed1\\policy-60000.pt",
+        "config": {
+          "seed": 1,
+          "next_n": 5,
+          "hold": true,
+          "board_input": true,
+          "reward_profile": "balanced",
+          "gamma": 0.99,
+          "learning_rate": 0.0003,
+          "capacity": 5000,
+          "batch_size": 32,
+          "learning_starts": 1000,
+          "train_every": 4,
+          "target_every": 500,
+          "epsilon_start": 1.0,
+          "epsilon_final": 0.05,
+          "epsilon_steps": 15000,
+          "threads": 2
+        },
+        "placement_cap": 5000,
+        "episodes": [
+          {
+            "seed": 70000,
+            "beam": 1,
+            "lines": 949,
+            "placements": 2412,
+            "completed": true,
+            "capped": false,
+            "seconds": 6.128186400004779,
+            "placements_per_second": 393.5911609996261,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70000,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 40.390802499998244,
+            "placements_per_second": 123.79055850648714,
+            "evaluated_second_moves": 936499
+          },
+          {
+            "seed": 70001,
+            "beam": 1,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 13.035095600003842,
+            "placements_per_second": 383.57984885040094,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70001,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 49.214368300003116,
+            "placements_per_second": 101.59634620362857,
+            "evaluated_second_moves": 939588
+          },
+          {
+            "seed": 70002,
+            "beam": 1,
+            "lines": 1260,
+            "placements": 3189,
+            "completed": true,
+            "capped": false,
+            "seconds": 11.023047000002407,
+            "placements_per_second": 289.3029486311093,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70002,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 51.245657200001006,
+            "placements_per_second": 97.56924338946524,
+            "evaluated_second_moves": 941927
+          },
+          {
+            "seed": 70003,
+            "beam": 1,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.327821999999287,
+            "placements_per_second": 306.22577830651375,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70003,
+            "beam": 4,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 49.15197479999915,
+            "placements_per_second": 101.72531257075934,
+            "evaluated_second_moves": 938180
+          },
+          {
+            "seed": 70004,
+            "beam": 1,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 15.24633399999584,
+            "placements_per_second": 327.9476889330487,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70004,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 52.07773930000258,
+            "placements_per_second": 96.01031202980334,
+            "evaluated_second_moves": 941416
+          }
+        ],
+        "model": "seed1-60000",
+        "policy_sha256": "28f445d9286b014c5b09b53b0116efcbf8c159dbd817bdfb376b7ff1f925715e",
+        "origin": "evaluation"
+      },
+      {
+        "scope": "Bounded development comparison, one frozen training seed; no historical claim",
+        "checkpoint": "runs\\robustness-v1\\seed1\\policy-100000.pt",
+        "config": {
+          "seed": 1,
+          "next_n": 5,
+          "hold": true,
+          "board_input": true,
+          "reward_profile": "balanced",
+          "gamma": 0.99,
+          "learning_rate": 0.0003,
+          "capacity": 5000,
+          "batch_size": 32,
+          "learning_starts": 1000,
+          "train_every": 4,
+          "target_every": 500,
+          "epsilon_start": 1.0,
+          "epsilon_final": 0.05,
+          "epsilon_steps": 15000,
+          "threads": 2
+        },
+        "placement_cap": 5000,
+        "episodes": [
+          {
+            "seed": 70000,
+            "beam": 1,
+            "lines": 1999,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 17.321016800000507,
+            "placements_per_second": 288.6666561053075,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70000,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 52.584329700002854,
+            "placements_per_second": 95.08536152358197,
+            "evaluated_second_moves": 928537
+          },
+          {
+            "seed": 70001,
+            "beam": 1,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.722800800002005,
+            "placements_per_second": 298.99297730075216,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70001,
+            "beam": 4,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 51.04614759999822,
+            "placements_per_second": 97.95058461963492,
+            "evaluated_second_moves": 928519
+          },
+          {
+            "seed": 70002,
+            "beam": 1,
+            "lines": 1999,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.11946899999748,
+            "placements_per_second": 310.18391486721936,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70002,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 50.461855900000955,
+            "placements_per_second": 99.08474254114593,
+            "evaluated_second_moves": 930676
+          },
+          {
+            "seed": 70003,
+            "beam": 1,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.712769300000218,
+            "placements_per_second": 299.17244175685084,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70003,
+            "beam": 4,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 52.00213839999924,
+            "placements_per_second": 96.14989217443552,
+            "evaluated_second_moves": 926122
+          },
+          {
+            "seed": 70004,
+            "beam": 1,
+            "lines": 1995,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 15.765777199994773,
+            "placements_per_second": 317.14262713300667,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70004,
+            "beam": 4,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 53.16284440000163,
+            "placements_per_second": 94.05064865189657,
+            "evaluated_second_moves": 929262
+          }
+        ],
+        "model": "seed1-100000",
+        "policy_sha256": "967697d12ea47134ab16019061585473d66c4f6734cd82986d3508b851b7b366",
+        "origin": "evaluation-parallel"
+      },
+      {
+        "scope": "Bounded development comparison, one frozen training seed; no historical claim",
+        "checkpoint": "runs\\robustness-v1\\seed2\\policy-60000.pt",
+        "config": {
+          "seed": 2,
+          "next_n": 5,
+          "hold": true,
+          "board_input": true,
+          "reward_profile": "balanced",
+          "gamma": 0.99,
+          "learning_rate": 0.0003,
+          "capacity": 5000,
+          "batch_size": 32,
+          "learning_starts": 1000,
+          "train_every": 4,
+          "target_every": 500,
+          "epsilon_start": 1.0,
+          "epsilon_final": 0.05,
+          "epsilon_steps": 15000,
+          "threads": 2
+        },
+        "placement_cap": 5000,
+        "episodes": [
+          {
+            "seed": 70000,
+            "beam": 1,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.46185669999977,
+            "placements_per_second": 303.73244592756475,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70000,
+            "beam": 4,
+            "lines": 1999,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 50.91598459999659,
+            "placements_per_second": 98.20098814312892,
+            "evaluated_second_moves": 906701
+          },
+          {
+            "seed": 70001,
+            "beam": 1,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.13610800000606,
+            "placements_per_second": 309.8640638745181,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70001,
+            "beam": 4,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 50.15810729999794,
+            "placements_per_second": 99.68478216482076,
+            "evaluated_second_moves": 910865
+          },
+          {
+            "seed": 70002,
+            "beam": 1,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.047563799998898,
+            "placements_per_second": 311.57377296112344,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70002,
+            "beam": 4,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 49.74328870000318,
+            "placements_per_second": 100.51607223146226,
+            "evaluated_second_moves": 905257
+          },
+          {
+            "seed": 70003,
+            "beam": 1,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.32970650000061,
+            "placements_per_second": 306.19043887897266,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70003,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 51.44261220000044,
+            "placements_per_second": 97.19568634191475,
+            "evaluated_second_moves": 912198
+          },
+          {
+            "seed": 70004,
+            "beam": 1,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 15.550191400005133,
+            "placements_per_second": 321.5394506332796,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70004,
+            "beam": 4,
+            "lines": 1998,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 52.45566139999573,
+            "placements_per_second": 95.31859605911683,
+            "evaluated_second_moves": 910563
+          }
+        ],
+        "model": "seed2-60000",
+        "policy_sha256": "f73d6da8dbb6db14b57d2faec638b777415724882ef7943f5345b70faa552358",
+        "origin": "evaluation-parallel"
+      },
+      {
+        "scope": "Bounded development comparison, one frozen training seed; no historical claim",
+        "checkpoint": "runs\\robustness-v1\\seed2\\policy-100000.pt",
+        "config": {
+          "seed": 2,
+          "next_n": 5,
+          "hold": true,
+          "board_input": true,
+          "reward_profile": "balanced",
+          "gamma": 0.99,
+          "learning_rate": 0.0003,
+          "capacity": 5000,
+          "batch_size": 32,
+          "learning_starts": 1000,
+          "train_every": 4,
+          "target_every": 500,
+          "epsilon_start": 1.0,
+          "epsilon_final": 0.05,
+          "epsilon_steps": 15000,
+          "threads": 2
+        },
+        "placement_cap": 5000,
+        "episodes": [
+          {
+            "seed": 70000,
+            "beam": 1,
+            "lines": 1995,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.312533299998904,
+            "placements_per_second": 306.5127842528503,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70000,
+            "beam": 4,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 50.33562900000106,
+            "placements_per_second": 99.33321782866554,
+            "evaluated_second_moves": 899177
+          },
+          {
+            "seed": 70001,
+            "beam": 1,
+            "lines": 389,
+            "placements": 1006,
+            "completed": true,
+            "capped": false,
+            "seconds": 3.230965099995956,
+            "placements_per_second": 311.3620756848346,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70001,
+            "beam": 4,
+            "lines": 1995,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 49.916059800001676,
+            "placements_per_second": 100.16816271223058,
+            "evaluated_second_moves": 901003
+          },
+          {
+            "seed": 70002,
+            "beam": 1,
+            "lines": 1995,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 15.794701099999656,
+            "placements_per_second": 316.56186263633117,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70002,
+            "beam": 4,
+            "lines": 1997,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 48.99221779999789,
+            "placements_per_second": 102.05702506491174,
+            "evaluated_second_moves": 899433
+          },
+          {
+            "seed": 70003,
+            "beam": 1,
+            "lines": 1994,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 15.800949000004039,
+            "placements_per_second": 316.43668997341376,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70003,
+            "beam": 4,
+            "lines": 1994,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 51.349068700001226,
+            "placements_per_second": 97.37274943021275,
+            "evaluated_second_moves": 897320
+          },
+          {
+            "seed": 70004,
+            "beam": 1,
+            "lines": 1994,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 16.15042920000269,
+            "placements_per_second": 309.58929562064935,
+            "evaluated_second_moves": 0
+          },
+          {
+            "seed": 70004,
+            "beam": 4,
+            "lines": 1996,
+            "placements": 5000,
+            "completed": false,
+            "capped": true,
+            "seconds": 49.45823810000002,
+            "placements_per_second": 101.09539263995735,
+            "evaluated_second_moves": 895711
+          }
+        ],
+        "model": "seed2-100000",
+        "policy_sha256": "81b1aead9dd7b284c4d2138184e0e112d97b6cc3d6e88e4b0add62385aee92fb",
+        "origin": "evaluation-parallel"
+      }
+    ],
+    "training": [
+      {
+        "pid": 31716,
+        "seed": 1,
+        "target_steps": 100000,
+        "state": "complete",
+        "step": 100000,
+        "seconds": 493.94577910000226,
+        "placements_per_second": 203.15243142522354,
+        "completed_episodes": 814,
+        "replay_mib": 135.7712345123291,
+        "last_loss": 0.8267691135406494
+      },
+      {
+        "pid": 10076,
+        "seed": 2,
+        "target_steps": 100000,
+        "state": "complete",
+        "step": 100000,
+        "seconds": 495.95507609999913,
+        "placements_per_second": 202.26920026836584,
+        "completed_episodes": 801,
+        "replay_mib": 131.88237762451172,
+        "last_loss": 0.9006505608558655
+      }
+    ]
+  }
+}

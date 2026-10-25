@@ -1,0 +1,37 @@
+{
+  "scope": "One known-menu-wait33 development failure; exact original fault reproduced, not a survival guarantee",
+  "source_commit": "337af4b85b7dad63fc8bb903b679aa6d8061a044",
+  "start_level": 18,
+  "menu_wait": 33,
+  "level": 167,
+  "lines": 1613,
+  "last_settled_lines": 1610,
+  "cleared_lines": 3,
+  "score": 999999,
+  "raw_pushdown": 6,
+  "clear_stat_carry": false,
+  "fault": {
+    "type": "SuspectedCrash",
+    "reason": "rom_nmi_counter_stalled"
+  },
+  "fresh_full_input_ram_rgb_cpu_ppu_replay_verified": true,
+  "goal_achieved": false,
+  "native_observed_public_counter_proxy": {
+    "pre_level": 167,
+    "post_level": 167,
+    "cleared_lines": 3,
+    "score": 999999
+  },
+  "timing_or_pushdown_used_by_selector": false,
+  "primary_table_ambiguity": "Do not silently relabel the public3-157p entry as3-167p; this evidence is a separate native observation",
+  "files": {
+    "level167-triple-case.json": {
+      "bytes": 1944,
+      "sha256": "5ff2e1728729d20d7c89152b01229114658a1207a75ae37754d5c3bcf3611c64"
+    },
+    "level167-triple-replay.json": {
+      "bytes": 316587,
+      "sha256": "552a6673f452f1528ca429036fd84ebdda12bba60ab9cc9720513c86fcbe65bc"
+    }
+  }
+}

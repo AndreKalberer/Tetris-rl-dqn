@@ -1,0 +1,58 @@
+{
+  "phase": "independent-seed robustness",
+  "train_seeds": [
+    1,
+    2
+  ],
+  "target_steps": 100000,
+  "retained_steps": [
+    60000,
+    100000
+  ],
+  "frozen_reference": {
+    "train_seed": 0,
+    "steps": 60000
+  },
+  "evaluation_seeds": [
+    70000,
+    70001,
+    70002,
+    70003,
+    70004
+  ],
+  "placement_cap": 5000,
+  "beams": [
+    1,
+    4
+  ],
+  "models": [
+    "seed0-60000",
+    "seed1-60000",
+    "seed1-100000",
+    "seed2-60000",
+    "seed2-100000"
+  ],
+  "hyperparameters": "Default Config, seed only differs; one-ply epsilon-greedy training",
+  "source_sha256": {
+    "tetris_macro_env.py": "26fac0397833e979c45507a3c8c97369bfe09b8887fe071c28f6cf06fb2f7832",
+    "dqn\\benchmark_lookahead.py": "7845e9eb8ca2e94a0e92e5e7d59fd680e8513583f0fcdfe206ef6017fd3008c4",
+    "dqn\\candidates.py": "1162b5fd82956e14c3d32ee31ebebbd02f196d71e32bfb7f245cb06ed59d17bc",
+    "dqn\\checkpoint_metadata.py": "1bd5d30b5b6a926f82625c9fff60296290f6014776edb5fe2f7f5d8902de0375",
+    "dqn\\diagnose_policy_dqn.py": "9181f31b90f088898f94a2237c3ef4a74daffd5f1bb600e5c3d1dee0d161ef8a",
+    "dqn\\enjoy_local_dqn.py": "b8cf199492b1c734abfa766054658f6059ca03d17dad7b19e5ffdbefc3b2c651",
+    "dqn\\episode_stats.py": "f170ff057a7564871c6f51d3106f872090b49211cf36d2b057268c23ae5b83cf",
+    "dqn\\eval_lines.py": "48579a24f00d55388432739e2c9b23cff456fd19df58905e73eb6cf72e61d8b1",
+    "dqn\\lookahead.py": "fb1796dc93e47490ff4cfb5bb07765542a55ff9add93a32a8b1095b6a05b03cf",
+    "dqn\\play_candidates.py": "8668088094ee7c8722c299ae934f61ab94340776f4df359a11058c60a199a37f",
+    "dqn\\robust_train.py": "7883dcb04f2ee31f09d06219525769b951813be8b9f9b8569387d300c6186558",
+    "dqn\\train_candidates.py": "dc9acd44aa85f0b30666ba3898428c9a18dc333e73eebce8aeee007c6f7d05c4",
+    "dqn\\train_dqn_server.py": "459418b403e2ed5b6f0ce4fe786c4215ec18f39c49c7d643f377dfa0def208f2"
+  },
+  "selection": "No tuning based on these results; keep all snapshot outcomes, including failures",
+  "censoring": "Report bounded line counts and survivors; capped games are not completed-game averages",
+  "limits": "Five evaluation streams and three training seeds; not an elite or historical checkpoint comparison",
+  "evaluation_source_sha256": {
+    "dqn\\robust_eval.py": "7344bf08aac2e3cd69a9e8797f9cb6da6f30ae00c6e86b41a4de3741b40d99a0",
+    "dqn\\benchmark_lookahead.py": "0d9490a71583008dfc41a32c34a7c30c69519bb28c4b4eb8971452dd6fe8f70d"
+  }
+}

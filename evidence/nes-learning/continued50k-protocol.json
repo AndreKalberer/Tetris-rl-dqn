@@ -1,0 +1,58 @@
+{
+  "config": {
+    "seed": 0,
+    "levels": [
+      0,
+      9,
+      18,
+      19
+    ],
+    "board_input": false,
+    "reaction_frames": 3,
+    "navigation_frames": 48,
+    "rotation_period": 4,
+    "gamma": 0.99,
+    "learning_rate": 0.0001,
+    "capacity": 5000,
+    "batch_size": 64,
+    "learning_starts": 256,
+    "train_every": 4,
+    "target_every": 500,
+    "epsilon_start": 0.15,
+    "epsilon_final": 0.03,
+    "epsilon_steps": 20000,
+    "threads": 2
+  },
+  "rl_target_decisions": 50000,
+  "teacher_decisions": 1000,
+  "teacher_updates": 5000,
+  "validation_seeds": [
+    10101,
+    13007
+  ],
+  "reserved_seeds": [
+    21013,
+    27017,
+    32003
+  ],
+  "resumed_from": "runs\\nes-training-v1\\seed0\\latest.pt",
+  "prior_policy": "runs\\nes-training-v1\\seed0\\policy-best.pt",
+  "evaluation_start_levels": [
+    0,
+    18,
+    19
+  ],
+  "training_seed_range": [
+    0,
+    10000
+  ],
+  "selection": "Mean observed lines across all six timing-valid validation games; cutoffs remain censored",
+  "action_scope": "Bounded held-DAS navigation programs; three-frame reaction; no RNG access or pose setters",
+  "reward": "0.1 + lines^2 - 10*death - 0.05*delta aggregate height - 0.3*delta holes - 0.02*delta bumpiness",
+  "scope": "First single-training-seed NES pilot on provisional simulator, not a historical or original-ROM strength claim",
+  "source_sha256": {
+    "nes/engine.py": "172ba4fea5f7b1fd036d109fa3d21344dd22e31128bcc70523c0ce4575f2f90a",
+    "nes/actions.py": "93042b0aa28aadf93b1608ad716991dc59be1cc095b4150dd0121bc36a330a5c",
+    "nes/learn.py": "cd2a9ead77d7e0b00cdb35e113f459f7c640f3a8a44667738c3fdc9dd88c79a1"
+  }
+}

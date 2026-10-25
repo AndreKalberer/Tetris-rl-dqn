@@ -42,15 +42,12 @@ import numpy as np
 def _locked_playfield_01(env: gym.Env, obs: Dict[str, Any]) -> np.ndarray:
     """Return binary occupancy of the *locked* 20x10 playfield.
 
-    - Removes the active tetromino via active_tetromino_mask
+    - Reads the engine's locked board; its observation mask is a bounding box,
+      so clearing the entire mask would also erase existing blocks near spawn.
     - Crops away padding (left/right and bottom bedrock) using env.unwrapped.padding
     """
 
-    board = np.asarray(obs["board"], dtype=np.uint8)
-    mask = np.asarray(obs.get("active_tetromino_mask", 0), dtype=np.uint8)
-
-    locked = board.copy()
-    locked[mask != 0] = 0
+    locked = np.asarray(env.unwrapped.board, dtype=np.uint8).copy()
 
     # Crop padding: board is (height+pad, width+2*pad)
     p = int(getattr(env.unwrapped, "padding", 0) or 0)
@@ -64,19 +61,9 @@ def compute_features(board_01: np.ndarray) -> Tuple[int, int, int, int]:
     """Compute (aggregate_height, holes, bumpiness, max_height) on a 0/1 board."""
 
     h, w = board_01.shape
-    heights = np.zeros(w, dtype=np.int32)
-    holes = 0
-
-    for x in range(w):
-        col = board_01[:, x]
-        filled_idxs = np.flatnonzero(col)
-        if filled_idxs.size == 0:
-            heights[x] = 0
-            continue
-
-        top = int(filled_idxs[0])
-        heights[x] = h - top
-        holes += int(np.sum(col[top:] == 0))
+    occupied = board_01 != 0
+    heights = np.where(occupied.any(axis=0), h - occupied.argmax(axis=0), 0)
+    holes = int(np.sum(np.maximum.accumulate(occupied, axis=0) & ~occupied))
 
     aggregate_height = int(np.sum(heights))
     bumpiness = int(np.sum(np.abs(np.diff(heights)))) if w > 1 else 0
@@ -162,6 +149,7 @@ class TetrisPlacementEnv(gym.Wrapper):
         next_n: Optional[int] = None,
         reward_profile: str = "tetris",
         observation_mode: str = "features",
+        invalid_action_mode: str = "reject",
     ):
         super().__init__(env)
 
@@ -169,6 +157,9 @@ class TetrisPlacementEnv(gym.Wrapper):
         self._apply_reward_profile(self.reward_profile)
 
         self.include_hold = bool(include_hold)
+        if invalid_action_mode not in {"reject", "legacy_drop"}:
+            raise ValueError("invalid_action_mode must be 'reject' or 'legacy_drop'")
+        self.invalid_action_mode = invalid_action_mode
 
         if next_n is None:
             self.next_n = 1 if bool(use_next_piece) else 0
@@ -186,6 +177,12 @@ class TetrisPlacementEnv(gym.Wrapper):
 
         # Action encoding
         u = self.env.unwrapped
+        if self.next_n > u.queue.size:
+            u.queue = type(u.queue)(u.queue.randomizer, size=self.next_n)
+            u.observation_space.spaces["queue"] = gym.spaces.Box(
+                low=0, high=len(u.pixels),
+                shape=(u.padding, u.padding * self.next_n), dtype=np.uint8,
+            )
         self._x_count = int(u.width_padded - u.padding + 1)
         self._rots = 4
         self._hold_opts = 2 if self.include_hold else 1
@@ -302,10 +299,10 @@ class TetrisPlacementEnv(gym.Wrapper):
         # width=10, height=20 => agg_height/200, holes/200, bump/200, max_h/20
         feat = np.array(
             [
-                agg_h / 200.0,
-                holes / 200.0,
-                bump / 200.0,
-                max_h / 20.0,
+                agg_h / float(self._board_h * self._board_w),
+                holes / float(self._board_h * self._board_w),
+                bump / float(self._board_h * self._board_w),
+                max_h / float(self._board_h),
             ],
             dtype=np.float32,
         )
@@ -330,6 +327,11 @@ class TetrisPlacementEnv(gym.Wrapper):
         return np.concatenate(parts).astype(np.float32)
 
     def reset(self, **kwargs) -> Tuple[np.ndarray, Dict[str, Any]]:
+        seed = kwargs.get("seed")
+        if seed is not None:
+            # tetris-gymnasium 0.3.1 ignores seed=0; initialize its RNG explicitly.
+            self.env.unwrapped.queue.randomizer.rng = np.random.default_rng(seed)
+            self.action_space.seed(seed)
         raw_obs, info = self.env.reset(**kwargs)
         board_01 = _locked_playfield_01(self.env, raw_obs)
         agg_h, holes, bump, max_h = compute_features(board_01)
@@ -351,9 +353,64 @@ class TetrisPlacementEnv(gym.Wrapper):
 
         return self._obs_from_raw(raw_obs), info
 
+    def placement_reward(self, previous, current, lines_cleared: int, terminal: bool, *, invalid=False) -> float:
+        """Exact shaped reward for a preview; no engine state or RNG access."""
+        prev_agg_h, prev_holes, prev_bump, prev_max_h = previous
+        agg_h, holes, bump, max_h = current
+        delta_holes = holes - prev_holes
+        delta_height = agg_h - prev_agg_h
+        delta_bump = bump - prev_bump
+        delta_max_h = max_h - prev_max_h
+        # Reward shaping (per placement)
+        reward = 0.0
+
+        # Encourage survival (one piece placed without topping out)
+        if not (terminal):
+            reward += self.SURVIVE_BONUS
+
+        # Line clears
+        reward += float(self.LINE_CLEAR_REWARDS.get(lines_cleared, 0.0))
+
+        # Bonuses for making the board cleaner/flatter
+        if delta_holes < 0:
+            reward += self.HOLE_REDUCTION_BONUS * float(-delta_holes)
+        if delta_bump < 0:
+            reward += self.BUMP_REDUCTION_BONUS * float(-delta_bump)
+
+        # Structural penalties: always on, but scale up as the stack grows.
+        # This pushes the agent to avoid creating holes early (long-term survivability)
+        # without being overly harsh when the board is still empty.
+        h_ref = float(self._board_h or 20)
+        height_ratio = float(max_h) / h_ref if h_ref > 0 else 0.0
+        height_ratio = float(np.clip(height_ratio, 0.0, 1.0))
+        penalty_scale = float(self.PENALTY_SCALE_BASE + (1.0 - self.PENALTY_SCALE_BASE) * height_ratio)
+
+        if delta_holes > 0:
+            reward -= self.HOLE_CREATED_PENALTY * penalty_scale * float(delta_holes)
+        if delta_height > 0:
+            reward -= self.HEIGHT_INCREASE_PENALTY * penalty_scale * float(delta_height)
+        if delta_bump > 0:
+            reward -= self.BUMP_INCREASE_PENALTY * penalty_scale * float(delta_bump)
+        if delta_max_h > 0:
+            reward -= self.MAX_HEIGHT_INCREASE_PENALTY * penalty_scale * float(delta_max_h)
+
+        if invalid:
+            reward -= self.INVALID_ACTION_PENALTY
+
+        if terminal:
+            reward -= self.GAME_OVER_PENALTY
+
+        return float(reward)
+
     def step(self, action: int):
+        if not self.action_space.contains(action):
+            raise ValueError(f"Action outside placement space: {action!r}")
         u = self.env.unwrapped
+        if u.game_over:
+            raise RuntimeError("Episode is over; call reset() before step().")
         act = self.decode_action(action)
+        original_state = u.get_state()
+        original_held = self._held_piece_idx
 
         invalid = False
 
@@ -382,9 +439,23 @@ class TetrisPlacementEnv(gym.Wrapper):
         state.x = int(act.x)
         state.y = 0
 
-        if u.collision(state.active_tetromino, state.x, state.y):
+        ys, xs = np.nonzero(tet.matrix)
+        outside_frame = bool(np.any(xs + state.x < u.padding) or
+                             np.any(xs + state.x >= u.padding + u.width))
+        if outside_frame and self.invalid_action_mode == "reject":
+            # Restore hold and RNG as well: an invalid request consumes no piece.
+            u.set_state(original_state)
+            self._held_piece_idx = original_held
+            return self._obs_from_raw(u._get_obs()), -float(self.INVALID_ACTION_PENALTY), False, False, {
+                "lines_cleared": 0, "invalid_macro_action": True,
+                "macro_action_hold": act.hold, "macro_action_rot": act.rot_cw,
+                "macro_action_x": act.x, "piece_placed": False,
+            }
+        pose_blocked = bool(u.collision(state.active_tetromino, state.x, state.y))
+        if pose_blocked and self.invalid_action_mode == "legacy_drop":
             invalid = True
         else:
+            # A frame-valid pose blocked by the stack is a genuine top-out.
             u.set_state(state)
 
         # Commit the piece
@@ -414,44 +485,10 @@ class TetrisPlacementEnv(gym.Wrapper):
         # Lines cleared from info (tetris_gymnasium provides this per step)
         lines_cleared = int(info.get("lines_cleared", 0) or 0)
 
-        # Reward shaping (per placement)
-        reward = 0.0
-
-        # Encourage survival (one piece placed without topping out)
-        if not (terminated or truncated):
-            reward += self.SURVIVE_BONUS
-
-        # Line clears
-        reward += float(self.LINE_CLEAR_REWARDS.get(lines_cleared, 0.0))
-
-        # Bonuses for making the board cleaner/flatter
-        if delta_holes < 0:
-            reward += self.HOLE_REDUCTION_BONUS * float(-delta_holes)
-        if delta_bump < 0:
-            reward += self.BUMP_REDUCTION_BONUS * float(-delta_bump)
-
-        # Structural penalties: always on, but scale up as the stack grows.
-        # This pushes the agent to avoid creating holes early (long-term survivability)
-        # without being overly harsh when the board is still empty.
-        h_ref = float(board_01.shape[0] or 20)
-        height_ratio = float(max_h) / h_ref if h_ref > 0 else 0.0
-        height_ratio = float(np.clip(height_ratio, 0.0, 1.0))
-        penalty_scale = float(self.PENALTY_SCALE_BASE + (1.0 - self.PENALTY_SCALE_BASE) * height_ratio)
-
-        if delta_holes > 0:
-            reward -= self.HOLE_CREATED_PENALTY * penalty_scale * float(delta_holes)
-        if delta_height > 0:
-            reward -= self.HEIGHT_INCREASE_PENALTY * penalty_scale * float(delta_height)
-        if delta_bump > 0:
-            reward -= self.BUMP_INCREASE_PENALTY * penalty_scale * float(delta_bump)
-        if delta_max_h > 0:
-            reward -= self.MAX_HEIGHT_INCREASE_PENALTY * penalty_scale * float(delta_max_h)
-
-        if invalid:
-            reward -= self.INVALID_ACTION_PENALTY
-
-        if terminated or truncated:
-            reward -= self.GAME_OVER_PENALTY
+        reward = self.placement_reward(
+            (prev_agg_h, prev_holes, prev_bump, prev_max_h),
+            (agg_h, holes, bump, max_h), lines_cleared, bool(terminated or truncated), invalid=invalid,
+        )
 
         # Attach diagnostics
         info["custom_reward"] = float(reward)
@@ -465,6 +502,7 @@ class TetrisPlacementEnv(gym.Wrapper):
         info["bumpiness"] = int(bump)
         info["max_height"] = int(max_h)
         info["invalid_macro_action"] = bool(invalid)
+        info["piece_placed"] = not pose_blocked or invalid
         info["macro_action_hold"] = int(act.hold)
         info["macro_action_rot"] = int(act.rot_cw)
         info["macro_action_x"] = int(act.x)

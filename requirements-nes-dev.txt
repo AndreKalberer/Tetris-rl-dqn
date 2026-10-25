@@ -1,0 +1,3 @@
+-r requirements-nes.txt
+opencv-python==4.13.0.90
+pytest==9.1.1

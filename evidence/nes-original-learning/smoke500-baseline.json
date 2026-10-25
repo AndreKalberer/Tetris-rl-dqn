@@ -1,0 +1,60 @@
+[
+  {
+    "seed": 1001,
+    "level": 18,
+    "lines": 24,
+    "score": 22139,
+    "placements": 82,
+    "success": false,
+    "over": true,
+    "error": null,
+    "censored": false,
+    "exact_ram_rgb_replay": true,
+    "controller": {
+      "plans": 83,
+      "planning_seconds": 0.4171142999693984,
+      "planning_overruns": 0,
+      "extra_idle_frames": 0,
+      "runtime_latency_charged": false,
+      "target_misses": 0,
+      "proposal_board_differences": 0,
+      "board_audit_failures": 0,
+      "top_boundary_locks": 0,
+      "piece_type_differences": 0,
+      "action_interface": "Native feedback targets; approximate proposal features",
+      "reaction_frames": 3,
+      "navigation_frames": 48,
+      "horizontal_change_period": 6,
+      "rotation_period": 4
+    }
+  },
+  {
+    "seed": 1013,
+    "level": 18,
+    "lines": 18,
+    "score": 17826,
+    "placements": 71,
+    "success": false,
+    "over": true,
+    "error": null,
+    "censored": false,
+    "exact_ram_rgb_replay": true,
+    "controller": {
+      "plans": 72,
+      "planning_seconds": 0.30476310005178675,
+      "planning_overruns": 0,
+      "extra_idle_frames": 0,
+      "runtime_latency_charged": false,
+      "target_misses": 0,
+      "proposal_board_differences": 0,
+      "board_audit_failures": 0,
+      "top_boundary_locks": 0,
+      "piece_type_differences": 0,
+      "action_interface": "Native feedback targets; approximate proposal features",
+      "reaction_frames": 3,
+      "navigation_frames": 48,
+      "horizontal_change_period": 6,
+      "rotation_period": 4
+    }
+  }
+]

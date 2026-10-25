@@ -1,0 +1,2 @@
+# Optional source-level 6502 validation; not needed to play the NES engine.
+py65==1.2.0

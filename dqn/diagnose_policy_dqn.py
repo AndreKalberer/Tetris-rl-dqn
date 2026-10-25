@@ -27,6 +27,7 @@ from stable_baselines3 import DQN
 import tetris_gymnasium.envs  # noqa: F401
 
 from tetris_macro_env import TetrisPlacementEnv
+from dqn.episode_stats import EpisodeStats
 
 
 def _find_latest_model(models_dir: str) -> str:
@@ -89,6 +90,7 @@ def main() -> None:
         default=10,
         help="How many top actions to include in the summary/output.",
     )
+    parser.add_argument('--invalid-action-mode', choices=['reject', 'legacy_drop'], default='legacy_drop')
     args = parser.parse_args()
 
     model_path = str(args.model_path) if args.model_path else _find_latest_model(str(args.models_dir))
@@ -101,6 +103,7 @@ def main() -> None:
         next_n=int(args.next_n),
         reward_profile=str(args.reward_profile),
         observation_mode=args.obs,
+        invalid_action_mode=args.invalid_action_mode,
     )
 
     model = DQN.load(model_path, env=env)
@@ -117,6 +120,7 @@ def main() -> None:
     total_lines = 0
     total_reward = 0.0
 
+    stats = EpisodeStats()
     episodes = 0
     ep_lines = 0
     ep_steps = 0
@@ -146,6 +150,7 @@ def main() -> None:
         if info.get("invalid_macro_action"):
             invalid += 1
 
+        stats.add(lines, bool(terminated or truncated))
         if terminated or truncated:
             episodes += 1
             if ep_lines > best_ep_lines:
@@ -159,8 +164,8 @@ def main() -> None:
     avg_reward_per_step = total_reward / max(1, n_steps)
     invalid_rate = invalid / max(1, n_steps)
     hold_rate = float(hold_counts[1]) / float(max(1, n_steps))
-    lines_per_episode = float(total_lines) / float(max(1, episodes))
-    steps_per_episode = float(n_steps) / float(max(1, episodes))
+    lines_per_episode = stats.mean_lines if stats.mean_lines is not None else float("nan")
+    steps_per_episode = stats.mean_steps if stats.mean_steps is not None else float("nan")
 
     top_k = max(int(args.top_k), 1)
     top_actions = np.argsort(-counts)[:top_k]
@@ -205,6 +210,8 @@ def main() -> None:
         return
 
     print("n_steps =", n_steps)
+    print("unfinished_episode_lines =", stats.partial_lines)
+    print("unfinished_episode_steps =", stats.partial_steps)
     print("episodes_completed =", episodes)
     print("avg_reward_per_step =", avg_reward_per_step)
     print("lines_cleared_total =", total_lines)

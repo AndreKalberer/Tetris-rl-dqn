@@ -1,0 +1,4 @@
+# Optional compiled visible-next-piece planner; tested Windows CPython3.13.
+-r requirements-nes-original-training.txt
+numba==0.68.0
+llvmlite==0.50.0

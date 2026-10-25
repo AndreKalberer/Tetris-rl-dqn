@@ -1,0 +1,12 @@
+{
+  "reason": "Training is finished; evaluate remaining independent models concurrently",
+  "selected_origins": {
+    "seed0-60000": "evaluation",
+    "seed1-60000": "evaluation",
+    "seed1-100000": "evaluation-parallel",
+    "seed2-60000": "evaluation-parallel",
+    "seed2-100000": "evaluation-parallel"
+  },
+  "changes": "Scheduling only. All five models, seeds, placement caps, beams, and weights remain as predeclared.",
+  "state": "sequential_stop_requested"
+}

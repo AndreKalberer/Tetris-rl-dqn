@@ -1,0 +1,24 @@
+{
+  "source_commit": "411fa2ad8cc902bc877dbea7f92783d67b218f9d",
+  "baseline": {
+    "beam": 34,
+    "line_power": 1,
+    "well_column": -1,
+    "tap_period": 2
+  },
+  "experiment": {
+    "beam": 34,
+    "line_power": 2,
+    "well_column": 9,
+    "tap_period": 2
+  },
+  "runtime_latency_charged": true,
+  "starting_level": 18,
+  "backend": "nes-py9.0.1",
+  "scope": "Unpromoted scoring development pilot; reused starts, not reserved acceptance or RL gain",
+  "target_level": 30,
+  "menu_wait_seeds": [
+    17,
+    33
+  ]
+}

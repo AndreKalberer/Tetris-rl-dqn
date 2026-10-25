@@ -1,0 +1,30 @@
+{
+  "kind": "original-ntsc-a-feedback-double-dqn-v2",
+  "rom_sha256": "acab10f2dbad4d4ef5d56b31cd4cea208bb6e2e2c5dba5eb339d711ec04e3535",
+  "training_seeds": [
+    0,
+    1,
+    2
+  ],
+  "steps_per_seed": 10000,
+  "training_menu_wait_range": [
+    0,
+    511
+  ],
+  "validation_menu_wait_seeds": [
+    1001,
+    1013
+  ],
+  "starting_level": 18,
+  "target_level": 30,
+  "teacher_rollout_decisions": 256,
+  "training_timing": "Fixed logical reaction, actual original-game transitions",
+  "validation_timing": "Fixed logical reaction; selected policy additionally tested with charged runtime latency",
+  "selected_by": "Validation successes then median lines then mean score; no reserved starts used",
+  "reward": "0.02 + 0.1*lines^2 + score_delta/100000 - 5*death + 5*complete_level29 + gamma*Phi(next)-Phi(before)",
+  "potential": "-0.02*sum_heights -0.25*holes -0.02*bumpiness; zero at terminal",
+  "method": "Approximate full predicted-board/context + target-pose features; clipped heuristic prior + zero-initial residual Double DQN; actual native feedback next-state/reward",
+  "action_interface": "3 reaction frames; 48 navigation frames; horizontal changes no faster than 6frames; rotation pulses 4frames; Down to observed lock; consecutive stable spawn orientations before next choice",
+  "limitations": "Experimental. Strict preview audit retained separately. Native target misses/prediction differences logged; actual board conservation and exact episode replay audited. No assumed gain.",
+  "reserved_acceptance": "Not run; freeze final protocol before 20 untouched starts"
+}

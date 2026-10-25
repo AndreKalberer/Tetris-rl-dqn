@@ -1,0 +1,16 @@
+{
+  "reference_revision": "94581c0306fa0009fe11fde48222875549d15b8b",
+  "reference_sha256": {
+    "main.asm": "7dde9fb41caf2d93f6bd8d951eae5cd8d2c2ab916c926751ef4fba21ca26719f",
+    "constants.asm": "c6376d030ddf57206588f530bf7c939d8289e8e100501b431d374ab1e7fdb143"
+  },
+  "cpu": "py65 1.2.0 NMOS 6502 (decimal flag clear)",
+  "orientation_tables_verified": 19,
+  "rotation_spawn_gravity_tables_verified": true,
+  "randomizer_cases": 3000,
+  "active_control_cases": 3000,
+  "case_seed": 73021,
+  "engine_sha256": "172ba4fea5f7b1fd036d109fa3d21344dd22e31128bcc70523c0ce4575f2f90a",
+  "verifier_sha256": "7b02ddae00e9c1ddf5aebbbf8479ef5b513c24719787fbdd12ab384726317a58",
+  "scope": "Source-level routine comparisons only. Whole-ROM, frame scheduler, PPU/audio timing, top-boundary memory and late-game glitches remain unvalidated."
+}

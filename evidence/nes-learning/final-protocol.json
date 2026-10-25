@@ -1,0 +1,71 @@
+{
+  "validation_seeds": [
+    10101,
+    13007
+  ],
+  "reserved_seeds": [
+    23017,
+    29021,
+    32501
+  ],
+  "levels": [
+    0,
+    18,
+    19
+  ],
+  "selection": "Highest mean observed lines on six fixed-logical-reaction validation cases only; CPU jitter does not change validation trajectories; all candidates retained",
+  "latency": "Three-frame minimum reaction; late plans discarded, their full elapsed frames charged as idle, then replan",
+  "policies": [
+    {
+      "path": "runs\\nes-training-v1\\seed0\\policy-warm.pt",
+      "sha256": "367c55d2ab76ff229de191b42ac3fc7a7295901daf739676e22df125ebbc4a07"
+    },
+    {
+      "path": "runs\\nes-training-v1\\seed0\\policy-5000.pt",
+      "sha256": "2864d0f78c2b3909fdfac6bfa9965881aa0f7375c2fa64994974cd55bc29b259"
+    },
+    {
+      "path": "runs\\nes-training-v1\\seed0\\policy-10000.pt",
+      "sha256": "7498ad59fd06399902d0f21a1c0c134940aa6be1f2ef41e74f05f90b26facefe"
+    },
+    {
+      "path": "runs\\nes-training-v1\\seed0\\policy-15000.pt",
+      "sha256": "143dd986013bd2458aabb67802857bae9bd004f3ccfee605cf08b0cf3c8ac98c"
+    },
+    {
+      "path": "runs\\nes-training-v1\\seed0\\policy-20000.pt",
+      "sha256": "1e284228ee12bf7ee851c7cca8cd1505ba189a96fe4ab8a4a04085c840a459e0"
+    },
+    {
+      "path": "runs\\nes-training-v2\\seed0\\policy-25000.pt",
+      "sha256": "1e1285699d541c8a7731ec76b9fa99bc7820f44dbc95c08a19007517e58c2820"
+    },
+    {
+      "path": "runs\\nes-training-v2\\seed0\\policy-30000.pt",
+      "sha256": "45ad46443f2e487853b4f2d59f97cb2a4e60ca81e344c2abb72faeb168a3574c"
+    },
+    {
+      "path": "runs\\nes-training-v2\\seed0\\policy-35000.pt",
+      "sha256": "2f6af18aa0257f389167fe0b94818ee4a5645269bb365e98869aeca3af805ba5"
+    },
+    {
+      "path": "runs\\nes-training-v2\\seed0\\policy-40000.pt",
+      "sha256": "5395c6921caa265bf3d64de0986470c6faae67084c13f94ae54cacd3e823577a"
+    },
+    {
+      "path": "runs\\nes-training-v2\\seed0\\policy-45000.pt",
+      "sha256": "98d8dbb5fe799cb07d2e4a44a45f9b41fe1f4790a3774671b5d48a65fe7222a7"
+    },
+    {
+      "path": "runs\\nes-training-v2\\seed0\\policy-50000.pt",
+      "sha256": "ac4a4e893c551390e1e73f545865537cf4a27e6bee0f1a1f1aa866a63bfd75f6"
+    }
+  ],
+  "source_sha256": {
+    "nes/engine.py": "172ba4fea5f7b1fd036d109fa3d21344dd22e31128bcc70523c0ce4575f2f90a",
+    "nes/actions.py": "93042b0aa28aadf93b1608ad716991dc59be1cc095b4150dd0121bc36a330a5c",
+    "nes/agent.py": "eb4d599452ad6038fe3661f7826cdd063e9bca659d658676bade522607e19117",
+    "nes/benchmark_learning.py": "f68c5a08a409f29c455ab7052ca732fbdd75d2d785e06f001da9a1ec08a28327"
+  },
+  "scope": "One training seed, provisional NES simulator, no ROM/human/world-record comparison"
+}

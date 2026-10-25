@@ -1,0 +1,27 @@
+{
+  "level": 18,
+  "lines": 40,
+  "score": 33411,
+  "placements": 102,
+  "frames": 6370,
+  "over": false,
+  "start_level": 18,
+  "menu_wait_seed": 17,
+  "stopped_by": "path_mismatch",
+  "error": "Original-game planned path ended before lock",
+  "wall_seconds": 10.085429400001885,
+  "completed": false,
+  "controller": {
+    "policy": "heuristic",
+    "plans": 103,
+    "planning_seconds": 0.9173418999707792,
+    "planning_overruns": 0,
+    "extra_idle_frames": 0,
+    "path_mismatches": 1,
+    "runtime_latency_charged": true,
+    "reaction_frames": 3,
+    "input_pipeline_frames": 1
+  },
+  "scope": "Original Nintendo USA game in nes-py; development probe, not reserved benchmark",
+  "exact_ram_rgb_replay": true
+}

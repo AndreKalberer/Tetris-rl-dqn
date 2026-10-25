@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-22",
+  "python": "3.13.15 (tags/v3.13.15:4061bc4, Aug  5 2026, 13:05:39) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "win32",
+  "dependencies": {
+    "nes-py": "9.0.1",
+    "gym-tetris": "4.0.0",
+    "gymnasium": "1.2.3",
+    "numpy": "2.2.6"
+  },
+  "wheel_sha256": {
+    "gym_tetris-4.0.0-py3-none-any.whl": "048ffa24cfb22330fd81ba89b61f3ec887db0fa6f256ccce191b3c920c86a042",
+    "nes_py-9.0.1-cp313-cp313-win_amd64.whl": "2ad6a8e3e57e2af343292b636fcc866fa4887efd14a8de3543045f5f72ef08b6"
+  },
+  "upstream": [
+    "https://github.com/Kautenja/gym-tetris",
+    "https://github.com/Kautenja/nes-py"
+  ],
+  "rom_sha256": "acab10f2dbad4d4ef5d56b31cd4cea208bb6e2e2c5dba5eb339d711ec04e3535",
+  "ram_writes_by_adapter": 0,
+  "gym_tetris_reset_helpers_used": false,
+  "isolated_tests": {
+    "command": "python -m unittest discover -s tests -p test_nes_original.py -v",
+    "passed": 10,
+    "seconds": 43.179
+  },
+  "main_environment_tests": {
+    "passed": 87,
+    "skipped": 8,
+    "reason": "Native emulator installed only in separate environment"
+  },
+  "verified": [
+    "Original menu starts 0/9/10/18/19",
+    "Deterministic recreated power-on, not native soft reset",
+    "In-memory native snapshot, full input journal portable continuation across instances",
+    "Active control and every initial candidate replay at levels 0/18/19",
+    "Natural top-out, locked placements versus original piece statistics",
+    "Forced late planning discards proposal and advances thirteen real idle frames",
+    "Previously failing original trace continues beyond placement102",
+    "Full corrected original-game development episode replays exact whole RAM and RGB"
+  ],
+  "fidelity_limits": [
+    "Emulator is not certified cycle-accurate physical hardware",
+    "PPU-frame RAM observations may split game main-loop timer updates",
+    "Fast provisional model proposes moves; original game controls all actual transitions",
+    "Runtime uses observed lock with bounded additional legal Down; pose and resulting board still audited",
+    "Full level29/late-game behavior and independent-emulator parity unvalidated",
+    "No original-game neural training or three-seed study yet"
+  ],
+  "original_game_development_result": {
+    "level": 18,
+    "lines": 60,
+    "score": 52597,
+    "placements": 175,
+    "frames": 10520,
+    "over": true,
+    "start_level": 18,
+    "menu_wait_seed": 17,
+    "stopped_by": "natural_top_out",
+    "error": null,
+    "wall_seconds": 16.540979600002174,
+    "completed": true,
+    "controller": {
+      "policy": "heuristic",
+      "plans": 176,
+      "planning_seconds": 1.1874958000698825,
+      "planning_overruns": 0,
+      "extra_idle_frames": 0,
+      "path_mismatches": 0,
+      "runtime_latency_charged": true,
+      "reaction_frames": 3,
+      "input_pipeline_frames": 1,
+      "drop_timing_adjustments": 145,
+      "lock_timer_differences": 65
+    },
+    "scope": "Original Nintendo USA game in nes-py; development probe, not reserved benchmark",
+    "exact_ram_rgb_replay": true
+  },
+  "simulator_result": "50k decisions in one seed did not reliably beat heuristic or imitation-only; retained separately"
+}

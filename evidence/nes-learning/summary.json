@@ -1,0 +1,17 @@
+{
+  "total_rl_decisions": 50000,
+  "teacher_decisions": 1000,
+  "teacher_updates": 5000,
+  "selected_rl_decisions": 15000,
+  "training_seed": 0,
+  "mean_lines": {
+    "random": 0.0,
+    "heuristic": 58.44444444444444,
+    "learned": 55.333333333333336,
+    "imitation_only": 72.66666666666667
+  },
+  "all_replays_verified": true,
+  "all_games_natural": true,
+  "conclusion": "No reliable RL gain: final RL below heuristic and imitation-only; retain all snapshots",
+  "policy_sha256": "143dd986013bd2458aabb67802857bae9bd004f3ccfee605cf08b0cf3c8ac98c"
+}
