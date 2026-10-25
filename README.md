@@ -111,6 +111,12 @@ Test changes cheaply with the crash-zone simulator `tools/zone_sim.py` (see
 
 Emulator-dependent tests skip when MesenCE or optional dependencies are not available.
 
+`tests/test_sim_regression.py` (needs numpy + numba) pins the simulators: seeded games, v8c
+crash-zone games, 1G reach limits and the crash model must match `tests/data/sim_golden.json`,
+and survival floors must hold. After an intended behaviour change, check the floors (full
+v8c baseline: `SIM_FULL_BASELINE=1`, about 10 minutes on 4 cores), then re-record with
+`python tools/sim_golden.py --write`.
+
 ## Project layout
 
 | Path | Contents |

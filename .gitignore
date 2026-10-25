@@ -27,3 +27,4 @@ logs/
 !models/seed2-100000.pt
 !models/nes-seed0-best.pt
 !models/nes-seed0-imitation.pt
+.numba-cache/
