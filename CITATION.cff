@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Tetris bots: original NES Tetris to level 255, and a modern-rules offline sprint"
+authors:
+  - family-names: Kalberer
+    given-names: Andre
+repository-code: "https://github.com/AndreKalberer/Tetris-rl-dqn"
+license: MIT
+type: software
