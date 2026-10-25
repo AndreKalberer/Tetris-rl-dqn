@@ -1,271 +1,165 @@
-# Tetris bots: offline sprint and original NES Tetris to level 255
+# Tetris bots: original NES Tetris to level 255, and a modern-rules offline sprint
 
-## NES Tetris: level 255 and rebirth on the original cartridge
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
+![Emulator: MesenCE 2.2.1](https://img.shields.io/badge/emulator-MesenCE%202.2.1-orange.svg)
 
-A bot plays Nintendo's original Tetris (USA, NTSC, A-Type) in the MesenCE emulator from
-level 18 with controller input only — no ROM, RAM or RNG edits — and every result is
-verified by replaying the full input in a fresh emulator:
+Two Tetris-playing bots, each judged only by results that are replayed and verified:
 
-- **20 verified games reached level 255** (3,290 lines), each with an uncapped score of
-  about 22.1–22.5 million (the cartridge's counter stops at 999,999).
-- **A verified rebirth game**: past level 255, the counter wraps to 0, then back up to
-  level 255 again — 6,651 lines, uncapped score 43,047,996.
-- It survives the game's level 155+ crash bugs with an exact crash-timing model
-  (a Python port of HydrantDude's TetrisGYM model) instead of a patched cartridge.
+1. **NES Tetris (current work).** A bot plays Nintendo's original Tetris (USA, NTSC, A-Type)
+   in the MesenCE emulator from level 18, through the real menus, with **controller input
+   only** — no ROM, RAM or random-number edits and no savestates in play — and reaches
+   level 255, past the game's level-155+ crash bugs.
+2. **Offline Sprint (earlier work).** A self-contained modern-rules game with a learned
+   (Double DQN) board-scoring policy, reachable-move planning and a lookahead study.
 
-How it works, how to run it and its limits: [docs/NES-255.md](docs/NES-255.md).
-Every verified game: [docs/RESULTS-255.md](docs/RESULTS-255.md). Tools: [tools/README.md](tools/README.md).
+## Headline results
 
-## Offline Sprint (modern-rules game)
+**Original NES cartridge, MesenCE 2.2.1, from level 18** — full list in
+[docs/RESULTS-255.md](docs/RESULTS-255.md):
 
-A local Tetris research project with a playable offline game, a trained board-scoring
-neural policy, reachable-move planning, and reproducible evaluation.
+| Result | Verified games | Detail |
+|---|---|---|
+| Reached level 255 | **20** | 3,290 lines each; uncapped score 22.13–22.53 million (mean 22,353,715). The cartridge's own counter stops at 999,999. |
+| Rebirth: level 255 → wrap to 0 → level 255 again | **1** | Absolute level 511, 6,651 lines, uncapped score 43,047,996 (bot v8b, seed 19211). |
+| Current bot (v8c) | 6 of 7 | development games reached 255; the crash-zone simulator estimates about 94–95% per game (simulator estimate, not a verified rate). |
 
-The checkpoint before NES work is documented in [CHECKPOINT.md](CHECKPOINT.md),
-including retained results and instructions for restoring models and saved games.
+**Offline Sprint v1** (this project's own modern ruleset) — details in
+[docs/OFFLINE-SPRINT.md](docs/OFFLINE-SPRINT.md):
 
-Experimental NES work lives separately under [nes/](nes/README.md). Run
-`.\play-nes.ps1` for human play or `.\play-nes.ps1 -Bot -StartLevel 18` for the
-untrained stacking probe. This provisional engine has source-level mechanics
-checks and an experimental [NES learner](nes/TRAINING.md). Whole-ROM parity is
-still pending. An [original-game emulator adapter](nes_original/README.md) now
-runs Nintendo USA/NTSC A-Type in nes-py, using genuine controller menus and
-read-only RAM observations. It is separate from the simulator and its trained
-policies. The modern checkpoint's results do not transfer to NES.
+- **20/20** reserved 40-line games passed (target was 18/20), each verified by replaying only
+  its frame-numbered inputs; zero rejected inputs, board mismatches or planning overruns.
+- One-move lookahead (beam 4) survived the 5,000-placement cap in **15/15** matched
+  model/stream cases versus **10/15** without it (censored outcomes, not averages).
+- One endurance game reached **15,464 lines** and was still alive at its wall-time cutoff
+  (a single unfinished game, not an average).
 
-The [MesenCE reference path](docs/NES-ORIGINAL-REFERENCE.md) now supports original
-gameplay, replay, training and evaluation. nes-py development runs have cleared
-level29 from18 (240lines); reliable clears,500k median score and RL improvement
-remain unproved. A CPU JAM diagnostic found a nes-py fidelity gap, so late-game
-crash/rebirth claims require the independent reference path and further tests.
+## How the NES bot works
 
-The offline bot uses **legal timed inputs**: move, rotate, hold, and hard drop.
-Gravity and lock timing remain active. The older placement-action training
-sandbox is also included, and its scores are kept separate.
+```mermaid
+flowchart LR
+    ROM["Original cartridge image<br/>in MesenCE 2.2.1"] -->|"read-only RAM:<br/>board, piece, next, counters"| OBS[Observation]
+    OBS --> PLAN["Move search<br/>Dellacherie features, next piece (beam 5),<br/>expectimax over unknown pieces in danger zones"]
+    PLAN --> CRASH["Crash-map prioritizer<br/>exact crash-timing model rates every<br/>line clear from level 150"]
+    CRASH --> CTRL["Controller<br/>legal timed inputs, 30 taps/s,<br/>per-move Down (pushdown) decision"]
+    CTRL -->|"controller input only"| ROM
+    CTRL --> J[(Input journal)]
+    J --> VER["Fresh-emulator replay<br/>must match RAM, picture,<br/>CPU/PPU clocks and result"]
+```
 
-## Quick start (Windows, Python 3.13)
+- **Why it is hard.** From level 29 pieces fall one row per frame. From level 155, a line
+  clear can make the score routine overrun into the frame interrupt and crash the CPU;
+  whether it does depends on the level, line count, which rows clear, soft-drop points and
+  a little unobservable timing. Danger zones are roughly levels 154–173 and 247–255.
+- **Crash avoidance** uses `nes_original/crash_cycle_model.py`, a Python port of
+  HydrantDude's crash-timing model as implemented in TetrisGYM, validated on 986 of 988
+  community sheet cells and on the crashes observed in real runs. The bot plays the
+  safest surviving move, decides per move whether to hold Down, and accepts some risk only
+  when the stack is high enough that a top-out is the bigger danger.
+- **Not reinforcement learning.** The level-255 bot is a search over a hand-designed
+  evaluator whose weights were tuned on a simulator. The learned (DQN) policies in this
+  repository belong to the Offline Sprint and the earlier NES learning pilots.
 
-From the extracted project directory:
+Full explanation: [docs/NES-255.md](docs/NES-255.md).
+
+## Verification
+
+Every NES result above was produced from controller input only and then replayed from its
+recorded inputs in a **fresh** MesenCE process; a game counts only when RAM, the picture,
+CPU/PPU clocks and the final result match exactly (`case_state: verified`). Seeds are the
+number of frames waited on the menu, which fixes the piece sequence. Offline Sprint results
+are likewise verified by replaying their primitive inputs against the engine.
+
+## Quick start
+
+Windows, Python 3.13. The repository includes small trained policies; no training is needed
+to play.
+
+**Offline Sprint** (installs `.venv`, pinned CPU dependencies, and runs the tests):
 
 ```powershell
 .\setup.ps1
-.\play.ps1
+.\play.ps1            # watch the bot
+.\play.ps1 -Human     # play yourself
+.\evaluate.ps1        # reproduce the 20-seed acceptance evaluation
 ```
 
-Setup creates `.venv`, installs pinned CPU dependencies, and runs the tests. The
-release includes trained weights; training is not required to watch or play.
-Installation needs package downloads once; gameplay runs offline afterward.
-The tested full dependency lock is `requirements-lock-cpu-windows.txt`.
+**NES level-255 bot.** Needs a portable
+[MesenCE 2.2.1](https://github.com/nesdev-org/MesenCE/releases/tag/2.2.1) and the original
+USA game image already installed by the `gym-tetris` dependency (no game image is included
+in this repository). Set up the isolated environment as described in
+[docs/NES-ORIGINAL-REFERENCE.md](docs/NES-ORIGINAL-REFERENCE.md) (`.\setup-nes-original.ps1`,
+plus `requirements-nes-search.txt` for the compiled planner), then point the launcher at it
+with the `MESEN`, `PY` and `JIT_DEPS` variables:
 
-Human play and reproducible evaluation:
-
-```powershell
-.\play.ps1 -Human
-.\evaluate.ps1
+```bash
+sh tools/run255.sh 19211            # one game to level 255, then replay verification
+sh tools/run255.sh 19211 511        # rebirth: back up to level 255 on the second lap
+sh tools/run255.sh 19211 endless    # until the bot tops out or crashes
+tools/watch.cmd 500                 # watch a recorded game with an uncapped-score panel
 ```
 
-If scripts are restricted in your environment, the equivalent commands are:
+Test changes cheaply with the crash-zone simulator `tools/zone_sim.py` (see
+[tools/README.md](tools/README.md)).
+
+**Tests:**
 
 ```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m offline.play
-.\.venv\Scripts\python.exe -m offline.play --human
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Controls: arrows move/soft drop, Up or X rotates clockwise, Z rotates
-counterclockwise, Space hard drops, C holds. B toggles bot/human, P pauses,
-R restarts the seed, N starts the next seed, and Esc quits. The display shows
-lines, pieces, game time, hold, and next pieces. It pauses after a suspend-sized
-clock gap instead of fast-forwarding an unseen game.
+Emulator-dependent tests skip when MesenCE or optional dependencies are not available.
 
-## Offline game and acceptance result
+## Project layout
 
-**Offline Sprint v1** has a 10x20 visible board, four hidden spawn rows, seven-bag,
-next five, hold, SRS-style kicks, 60 Hz physics, gravity at two rows/sec, a
-0.5-second lock delay, and at most 15 grounded lock resets. Its exact rules and
-strict hidden-row top-out behavior are in [offline/RULES.md](offline/RULES.md).
-This is an independent offline ruleset, not an official Tetris product or a
-certification of the proprietary Tetris Guideline. It does not control another
-commercial game or an online service.
+| Path | Contents |
+|---|---|
+| [`nes_original/`](nes_original/README.md) | Original-cartridge bot: MesenCE / nes-py adapters, Lua bridge, planner and evaluator, crash model, endurance runner, replay and verification. Tuned weights in `nes_original/weights/`. |
+| [`tools/`](tools/README.md) | `run255.sh` launcher, batch runner, crash-zone simulator, tuners, replay viewer, packaging. |
+| [`offline/`](offline/RULES.md) | Offline Sprint engine, bot controller, player/recorder, acceptance evaluator, endurance. |
+| `dqn/` | Double DQN training, candidate enumeration, lookahead, robustness and legacy SB3 scripts. |
+| [`nes/`](nes/README.md) | Earlier provisional NES simulator and learning pilot (not an emulator). |
+| `models/` | Small inference-only policy exports. |
+| `evidence/` | Retained result files, protocols and audits. |
+| `tests/` | pytest suite. |
+| [`docs/`](docs/README.md) | All documentation, indexed. |
+| `setup*.ps1`, `play*.ps1`, `evaluate.ps1`, `research-evaluate.ps1`, `requirements-*.txt` | Setup, play and evaluation entry points and pinned dependency sets. |
+| [`progress.md`](progress.md) | Dated development log (kept at the root; some scripts update it). |
 
-The v1 acceptance target was at least 18 successful 40-line games out of 20
-reserved starts. The frozen policy/controller passed **20/20** seeds 91000–91019:
+## Limits
 
-- Every game cleared at least 40 lines before a natural loss or resource cutoff.
-- Zero rejected bot inputs, predicted/actual board mismatches, or planning overruns.
-- Every game was verified by replaying only its frame-numbered primitive inputs.
-- Median game time was **74.41 simulation seconds**, range **70.00–76.35**.
-  Headless wall time is not the speed of a real-time game.
+- Results are verified **in an emulator (MesenCE 2.2.1), not on NES hardware**.
+- About 5% of games still fail by the simulator estimate, mostly around level 157, where every
+  single carries at least 25% crash risk.
+- The crash model's predictions beyond the first lap are tested only by the one rebirth game.
+- The bot scores mostly with singles; tetris-building at level-29 speed is not yet safe.
+- The ~94–95% per-game rate is a simulator estimate; verified counts are the ones in the
+  results table.
+- Offline Sprint uses this project's own ruleset; it is not an official Tetris product or a
+  Guideline certification, and its results say nothing about NES play.
 
-The bot waits 30 frames per placement and issues at most one input every three
-frames. It cannot set the game board or active pose. The controller searches a
-bounded subset of reachable horizontal/rotation paths, then hard drops from the
-current reachable pose. It does not search every possible timing-dependent tuck.
-Thinking longer than its 0.5-second budget makes a trial inconclusive.
+## Credits and references
 
-The earlier unrestricted planner cleared a development game but exceeded its
-thinking budget; it was rejected as inconclusive. The search was bounded before
-reserved evaluation. Engine/controller/evaluator/rule hashes and the policy hash
-were frozen in the acceptance protocol. Time/frame cutoffs never count as wins.
-Raw per-input traces and protocols are included in release evidence.
+- **HydrantDude**'s crash research ("Crash Theory" sheet) and its in-game implementation in
+  [TetrisGYM](https://github.com/kirjavascript/TetrisGYM) (`src/modes/crash.asm`) — the basis
+  of the crash-timing model.
+- [MesenCE](https://github.com/nesdev-org/MesenCE) — the reference emulator.
+- [CelestialAmber/TetrisNESDisasm](https://github.com/CelestialAmber/TetrisNESDisasm),
+  [MeatFighter's NES Tetris analysis](https://meatfighter.com/nintendotetrisai/) and
+  [negative-seven's "Tetris explained"](https://negative-seven.github.io/tetris_explained/#high-levels--crashing-the-game)
+  — game mechanics and crash behaviour.
+- [nes-py](https://github.com/Kautenja/nes-py) and [gym-tetris](https://github.com/Kautenja/gym-tetris)
+  — the alternative emulator core and the installed game image.
+- Rotation conventions were checked against [Cold Clear](https://github.com/MinusKelvin/cold-clear/blob/master/libtetris/src/piece.rs);
+  the offline engine and controller were implemented independently.
+- Board features follow Dellacherie's classic evaluator; research context:
+  [Gabillon, Ghavamzadeh & Scherrer (2013)](https://mohammadghavamzadeh.github.io/PUBLICATIONS/nips13-tetris.pdf).
+  Their rules and scores are not interchangeable with this project's tests.
 
-Record a complete offline game without opening a window:
+Tetris is a trademark of The Tetris Company. This is an independent research project, not
+affiliated with or endorsed by Nintendo or The Tetris Company.
 
-```powershell
-python -m offline.play --seed 1001 --record runs/offline-demo.mp4 --screenshot runs/offline-final.png
-```
+## License
 
-The default learned model is `models/seed1-100000.pt`. Choose another retained
-model or disable extra lookahead with:
-
-```powershell
-python -m offline.play --checkpoint models/seed2-60000.pt --beam 1
-```
-
-## Research question and findings
-
-The focused question is: **how does one extra move of lookahead change a learned
-placement policy's strength, consistency, and CPU cost?** This is a reproducible
-engineering study, not a claim of a new algorithm or state-of-the-art Tetris.
-
-The research agent scores resulting boards with a shared 128/64-hidden-unit MLP.
-Inputs contain locked occupancy, structural features, held piece, and the visible
-queue. Training uses Double DQN, legal-only exploration/targets, deduplicated
-rotations, and packed replay. Search proposes the best four first placements,
-then scores exact immediate reward plus discounted next-placement value. Newly
-drawn hidden queue entries stay masked; this is approximate two-ply search.
-
-The study retained three independently trained agents (seeds 0/1/2), with matched
-60k snapshots and additional 100k snapshots for seeds 1/2. All five snapshots
-were evaluated with/without search on the same five new streams 70000–70004,
-at a 5,000-placement cap: 50 cases, all retained.
-
-At matched 60k, one-ply survived to the cap in **10/15 model/stream pairs**;
-beam-4 survived in **15/15**. Across all five snapshots, search survived all 25
-capped cases. Seed1-100k also survived all five one-ply games, while seed2-100k
-died at 389 lines on one stream that its 60k snapshot had survived. Longer
-training was therefore not uniformly beneficial.
-
-These are **censored outcomes**, not average lines until loss. The five streams
-are reused across models; snapshots from one training seed are correlated.
-The historical README score of 75.3 lines/game cannot be reproduced without its
-old checkpoint, so no verified historical multiplier is claimed.
-
-CPU profiling found preview/feature construction dominant. Batching preserved
-exact model inputs/outcomes on saved states, randomized boards, real-engine
-checks, and a complete reference trajectory. The same instrumented 200-move
-trace fell from **7.20s to 2.09s**. That is a small profiling sample, not a universal
-runtime guarantee. Concurrent benchmark jobs also affect wall-time measurements.
-
-Reproduce the three matched-budget model comparisons:
-
-```powershell
-.\research-evaluate.ps1
-```
-
-Or run an individual research comparison:
-
-```powershell
-python -m dqn.benchmark_lookahead --checkpoint models/seed1-60000.pt --seeds 70000 70001 70002 70003 70004 --cap 5000 --beams 1 4 --output runs/research-repeat
-```
-
-An explicit research line-goal evaluator distinguishes a passed line goal,
-natural loss, and inconclusive resource limit:
-
-```powershell
-python -m dqn.line_challenge --checkpoint models/seed1-100000.pt --seed 80003 --target-lines 10000 --output runs/line-goal
-```
-
-The earlier three 10k-line development trials were inconclusive after a large
-elapsed-time interruption while still alive around 2,600 lines. They are not
-passes or natural losses. The 10k-line research target remains an optional stretch;
-it is separate from the completed offline-sprint acceptance.
-
-## Offline endurance (optional extension)
-
-The finished offline controller can be measured beyond the forty-line sprint:
-
-```powershell
-python -m offline.endurance --seed 92000 --beam 4 --wall-seconds 1800 --output runs/endurance
-```
-
-The retained seed-92000 game reached **38,666 placements and 15,464 lines**, still
-alive at its wall-time cutoff (7.4 simulated hours). Its full primitive-input and
-locked-board replay verified, with zero rejected inputs, board mismatches, or
-planning overruns. This is one unfinished game, not an average or maximum. An
-initial reporting error was fixed and the exact saved game resumed. The first
-and last 1,000 placements had average tallest columns of 5.00 and 5.18 cells.
-The checkpoint backup preserves both segments and their original protocols.
-
-This uses the same gravity, lock delay, input rate, and trained policy, with the
-line-win condition disabled. There is **no piece, line, or simulation-frame cap**.
-Natural top-out is a completed game. The wall-time watchdog, an explicit stop,
-or an execution/controller error leaves the result unfinished, not a score until
-loss. Reports separate simulated game time, elapsed wall time, and process CPU
-seconds. One stream is an individual run, not an average or a global record.
-
-Inputs and locked-board hashes are streamed. Verify or continue an unfinished
-run without restarting its piece sequence:
-
-```powershell
-python -m offline.endurance --output runs/endurance --verify-only
-python -m offline.endurance --resume runs/endurance/state.pkl --wall-seconds 1800 --output runs/endurance-continued
-```
-
-Resume files contain pickled local game/controller state; load only files you
-trust. Previous segments are preserved and replayed in order. Use a fresh output
-directory for each segment. Creating a `STOP` file inside the current output
-directory requests a clean stop. This extension does not alter the frozen v1
-release archive or its forty-line acceptance evidence.
-
-## Train and resume
-
-```powershell
-python -m dqn.train_candidates --steps 20000 --seed 3 --output runs/new-agent
-python -m dqn.train_candidates --resume runs/new-agent/latest.pt --steps 100000 --output runs/continued
-```
-
-Steps are absolute total placed-piece targets. Full checkpoints preserve online/
-target weights, optimizer, replay, RNG, configuration, and the current research
-game. Load full pickle-based checkpoints only from trusted sources. The small
-`policy.pt` exports load with `weights_only=True`. Five policy snapshots and full
-resumable checkpoints are included in the release.
-
-Research training still uses the placement sandbox. The offline adapter filters
-choices through timed reachable paths; it is not a newly trained frame-level
-agent. Future estimates inside two-ply search remain approximate, while each
-executed first-placement path is checked against the offline engine.
-
-Legacy SB3 scripts remain under `dqn/`: `train_dqn_server.py`, `eval_lines.py`,
-`diagnose_policy_dqn.py`, and `enjoy_local_dqn.py`. `play_bot.py` and `record_gif.py`
-load legacy `.zip` models. Corrected observations and real next-5 input can change
-old-checkpoint behavior. Metadata/replay checks guard resume; an explicitly chosen
-`--allow-legacy-resume` is a warm start, not exact historical reproduction.
-
-## Code map and limits
-
-`offline/engine.py` owns physics; `offline/bot.py` plans and emits primitive
-inputs; `offline/play.py` renders/manual-controls/records; `offline/evaluate.py`
-runs and replays the acceptance protocol. `dqn/candidates.py` and `dqn/lookahead.py`
-provide research previews/value guidance; `dqn/train_candidates.py` owns learning.
-
-The project has automated tests covering research correctness, checkpoint continuation,
-preview parity, resource-cutoff accounting, offline physics/kicks, and timed
-path replay. Acceptance traces independently verify 20 full offline games.
-
-Further work is optional: more offline difficulties and unseen streams, soft-drop
-and tuck planning, addressing training regressions, broader survival estimates,
-or an adapter for a particular other game. Multiplayer, official-client control,
-and world-record strength are outside v1. No cloud service is required at runtime.
-
-## License and references
-
-Project code is MIT; see [LICENSE](LICENSE). Dependencies retain their own licenses.
-Mechanical rotation conventions were checked against the author's
-[Cold Clear implementation](https://github.com/MinusKelvin/cold-clear/blob/master/libtetris/src/piece.rs).
-The offline engine/controller were implemented independently.
-The Tetris research context is discussed in
-[Gabillon, Ghavamzadeh & Scherrer (2013)](https://mohammadghavamzadeh.github.io/PUBLICATIONS/nips13-tetris.pdf).
-Its rules and published scores are not interchangeable with this project's tests.
+Project code is MIT — see [LICENSE](LICENSE). Dependencies keep their own licenses.
