@@ -1,4 +1,22 @@
-# Tetris RL: Offline Sprint
+# Tetris bots: offline sprint and original NES Tetris to level 255
+
+## NES Tetris: level 255 and rebirth on the original cartridge
+
+A bot plays Nintendo's original Tetris (USA, NTSC, A-Type) in the MesenCE emulator from
+level 18 with controller input only — no ROM, RAM or RNG edits — and every result is
+verified by replaying the full input in a fresh emulator:
+
+- **20 verified games reached level 255** (3,290 lines), each with an uncapped score of
+  about 22.1–22.5 million (the cartridge's counter stops at 999,999).
+- **A verified rebirth game**: past level 255, the counter wraps to 0, then back up to
+  level 255 again — 6,651 lines, uncapped score 43,047,996.
+- It survives the game's level 155+ crash bugs with an exact crash-timing model
+  (a Python port of HydrantDude's TetrisGYM model) instead of a patched cartridge.
+
+How it works, how to run it and its limits: [docs/NES-255.md](docs/NES-255.md).
+Every verified game: [docs/RESULTS-255.md](docs/RESULTS-255.md). Tools: [tools/README.md](tools/README.md).
+
+## Offline Sprint (modern-rules game)
 
 A local Tetris research project with a playable offline game, a trained board-scoring
 neural policy, reachable-move planning, and reproducible evaluation.
@@ -173,7 +191,15 @@ The finished offline controller can be measured beyond the forty-line sprint:
 python -m offline.endurance --seed 92000 --beam 4 --wall-seconds 1800 --output runs/endurance
 ```
 
-The retained seed-92000 game reached **38,666 placements and 15,464 lines**, stillalive at its wall-time cutoff (7.4 simulated hours). Its full primitive-input andlocked-board replay verified, with zero rejected inputs, board mismatches, orplanning overruns. This is one unfinished game, not an average or maximum. Aninitial reporting error was fixed and the exact saved game resumed. The firstand last 1,000 placements had average tallest columns of 5.00 and 5.18 cells.The checkpoint backup preserves both segments and their original protocols.This uses the same gravity, lock delay, input rate, and trained policy, with the
+The retained seed-92000 game reached **38,666 placements and 15,464 lines**, still
+alive at its wall-time cutoff (7.4 simulated hours). Its full primitive-input and
+locked-board replay verified, with zero rejected inputs, board mismatches, or
+planning overruns. This is one unfinished game, not an average or maximum. An
+initial reporting error was fixed and the exact saved game resumed. The first
+and last 1,000 placements had average tallest columns of 5.00 and 5.18 cells.
+The checkpoint backup preserves both segments and their original protocols.
+
+This uses the same gravity, lock delay, input rate, and trained policy, with the
 line-win condition disabled. There is **no piece, line, or simulation-frame cap**.
 Natural top-out is a completed game. The wall-time watchdog, an explicit stop,
 or an execution/controller error leaves the result unfinished, not a score until
