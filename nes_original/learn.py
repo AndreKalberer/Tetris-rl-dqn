@@ -64,12 +64,13 @@ class Config:
     tap_period: int = 0
     prior: str = 'heuristic'
     exploration_top_k: int = 0
+    reaction_frames: int = 3
 
     def __post_init__(self):
         if self.capacity < max(self.batch_size,self.learning_starts) or min(
                 self.batch_size,self.train_every,self.target_every,self.epsilon_steps,self.threads) < 1:
             raise ValueError('Invalid replay/update settings')
-        ActionRules(horizontal_period=self.tap_period)
+        ActionRules(horizontal_period=self.tap_period,reaction_frames=self.reaction_frames)
         if self.prior not in ('heuristic','lookahead') or self.exploration_top_k<0:
             raise ValueError('Invalid prior/exploration mode')
 
@@ -388,6 +389,7 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
     rows = []
     for seed in seeds:
         controller = FeedbackController(fixed_reaction=not runtime,tap_period=config.tap_period,
+            reaction_frames=getattr(config,'reaction_frames',3),
             no_softdrop_at_1g=no_softdrop_at_1g,
             no_softdrop_levels=no_softdrop_levels,
             nonactive_input=nonactive_input,

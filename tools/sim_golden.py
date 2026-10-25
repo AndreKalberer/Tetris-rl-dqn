@@ -86,6 +86,7 @@ def zone_game(zone, seed, config=None):
     r = zone_sim.play((seed, zone, config))
     moves = json.dumps(r.pop('moves'), sort_keys=True).encode()
     r.pop('snapshots', None)
+    r.pop('points', None)   # score tally added with the full-game mode; not part of the recording
     r['moves_sha1'] = hashlib.sha1(moves).hexdigest()
     return r
 

@@ -21,13 +21,34 @@ BASE_POINTS = np.asarray((0,40,100,300,1200),dtype=np.int64)
 BOARD_FEATURES = ('holes','hole_rows','covered','height_sum','max_height','bump','row_transitions',
     'column_transitions','well_height','tetris_ready','i_dependencies','danger','cumulative_wells')
 PLACEMENT_FEATURES = ('landing_height','eroded','single','double','triple','tetris')
-FEATURES = BOARD_FEATURES+PLACEMENT_FEATURES
+# Level-29 terms in the style of StackRabbit's evaluator (appended last so older 19-weight
+# files keep their indices; they are padded with 0). Right well = column 9.
+REACH_FEATURES = ('inacc_left','inacc_right','covered_well','well_burns','avg_excess','col8_excess')
+FEATURES = BOARD_FEATURES+PLACEMENT_FEATURES+REACH_FEATURES
+N_REACH0 = len(BOARD_FEATURES)+len(PLACEMENT_FEATURES)
+# Highest column a piece can pass over at 30 Hz, level 29+ (fast simulator, measured):
+# a flat T/J/L/O tapped to the left wall, and a vertical I/O tapped to column 9.
+LEFT_LIMIT = np.asarray((7,7,7,8,10,12,14,20,20,20),dtype=np.int64)
+RIGHT_LIMIT = np.asarray((20,20,20,20,13,11,9,7,7,7),dtype=np.int64)
+SCARE_HEIGHT = 4.
+# Default frames the controller waits after spawn before its first input (v8c: 3). Every
+# enumeration takes the wait as an explicit `reaction` argument; this is only the default.
+REACTION = 3
+SAFE_COL8 = 5
 N_BOARD = len(BOARD_FEATURES)
 N_FEATURES = len(FEATURES)
 DEAD = -1.e12
 BANNED = -1.e9    # crash-alerted clear (bitmask `ban` by cleared lines), simulation only
 SOFT_DEAD = -1.e6  # a top-out for one unknown piece, inside an expectation
 MAX_CANDIDATES = 48
+
+
+def pad_weights(w):
+    """Accept weight vectors written before the reach terms existed (zero weight for them)."""
+    w = np.asarray(w,dtype=np.float64)
+    if w.shape==(N_REACH0,):
+        w = np.concatenate([w,np.zeros(N_FEATURES-N_REACH0)])
+    return w
 
 
 def weights(**named):
@@ -177,6 +198,40 @@ def board_features(board,well,out):
     out[10] = dependencies
     out[11] = danger*danger
     out[12] = cumulative
+    # Left access matters when column 0 is not built out above the others.
+    inacc_left = 0.
+    if heights[0]<=LEFT_LIMIT[0] or heights[0]<heights[8]:
+        worst = 0
+        for col in range(7):
+            worst = max(worst,heights[col]-LEFT_LIMIT[col])
+        if worst>0:
+            inacc_left = 1.+.2*worst*worst
+    inacc_right = 0.
+    if heights[9]<=RIGHT_LIMIT[9] or heights[9]<heights[8]:
+        worst = 0
+        for col in range(4,10):
+            worst = max(worst,heights[col]-RIGHT_LIMIT[col])
+        if worst>0:
+            inacc_right = 1.+.2*worst*worst
+    covered_well = 0.
+    well_burns = 0
+    for row in range(20):
+        if board[row,9]:
+            if covered_well==0.:
+                ratio = (20.-row)/max(3.,SCARE_HEIGHT)
+                covered_well = ratio*ratio*ratio
+            well_burns += 1
+    average = 0.
+    for col in range(9):
+        average += heights[col]/9.
+    excess = max(0.,average-SCARE_HEIGHT)
+    col8 = max(0,heights[8]-SAFE_COL8)
+    out[N_REACH0] = inacc_left
+    out[N_REACH0+1] = inacc_right
+    out[N_REACH0+2] = covered_well
+    out[N_REACH0+3] = well_burns
+    out[N_REACH0+4] = excess*excess
+    out[N_REACH0+5] = col8*col8
 
 
 @njit(cache=True)
@@ -218,10 +273,10 @@ def placement_features(before,x,y,orientation,cleared,out):
 
 
 @njit(cache=True)
-def candidates(board,initial,level,tap_period,states):
+def candidates(board,initial,level,tap_period,states,reaction):
     """Fill states with the final pose of every timed candidate; return count.
 
-    Same button schedule as nes.actions.enumerate_actions with reaction3,
+    Same button schedule as nes.actions.enumerate_actions with `reaction` idle frames first,
     navigation48 and rotation period4. Duplicated final poses are kept.
     """
     n = 0
@@ -238,8 +293,8 @@ def candidates(board,initial,level,tap_period,states):
             state = initial
             failed = False
             frames = 0
-            for f in range(3+48+160):
-                elapsed = f-3
+            for f in range(reaction+48+160):
+                elapsed = f-reaction
                 if elapsed<0:
                     buttons = 0
                 elif elapsed>=48:
@@ -301,12 +356,12 @@ def push_rule(level):
 
 
 @njit(cache=True)
-def best_child(board,orientation,das,level,tap_period,well,w,scratch,states,ban=0,push_min=0,push_mask=0):
+def best_child(board,orientation,das,level,tap_period,reaction,well,w,scratch,states,ban=0,push_min=0,push_mask=0):
     """Best placement-plus-board value of one known piece; DEAD if none survive."""
     state,failed = spawn_state(orientation,das,board,level)
     if failed:
         return DEAD
-    n = candidates(board,state,level,tap_period,states)
+    n = candidates(board,state,level,tap_period,states,reaction)
     best = DEAD
     for i in range(n):
         x,y,o = states[i,0],states[i,1],states[i,2]
@@ -327,7 +382,7 @@ def best_child(board,orientation,das,level,tap_period,well,w,scratch,states,ban=
 
 
 @njit(cache=True)
-def expected_child(board,orientation,das,level,start_level,lines,tap_period,well,w,keep,states,grand_states,ban=0,
+def expected_child(board,orientation,das,level,start_level,lines,tap_period,reaction,well,w,keep,states,grand_states,ban=0,
                    push_min=0,push_mask=0):
     """Known piece, then the average over all 7 unknown following pieces.
 
@@ -337,7 +392,7 @@ def expected_child(board,orientation,das,level,start_level,lines,tap_period,well
     state,failed = spawn_state(orientation,das,board,level)
     if failed:
         return DEAD
-    n = candidates(board,state,level,tap_period,states)
+    n = candidates(board,state,level,tap_period,states,reaction)
     scratch = np.zeros(N_FEATURES)
     values = np.full(n,DEAD)
     placement = np.zeros(n)
@@ -384,7 +439,7 @@ def expected_child(board,orientation,das,level,start_level,lines,tap_period,well
         child_level = level_after(start_level,lines+cleared)
         total = 0.
         for piece in range(7):
-            v = best_child(result,SPAWNS[piece],states[i,4],child_level,tap_period,well,w,scratch,grand_states,ban,
+            v = best_child(result,SPAWNS[piece],states[i,4],child_level,tap_period,reaction,well,w,scratch,grand_states,ban,
                            push_min,push_mask)
             total += v if v>DEAD else SOFT_DEAD
         best = max(best,placement[i]+total/7)
@@ -392,11 +447,11 @@ def expected_child(board,orientation,das,level,start_level,lines,tap_period,well
 
 
 @njit(cache=True)
-def choose(board,state,next_orientation,level,start_level,lines,tap_period,well,w,beam,states,child_states,
+def choose(board,state,next_orientation,level,start_level,lines,tap_period,reaction,well,w,beam,states,child_states,
            expect=0,ban=0,child_ban=False):
     """Return (candidate index, n candidates). beam=0 is one-ply; expect>0 adds the
     unknown piece after the visible next one, expanding `expect` next placements."""
-    n = candidates(board,state,level,tap_period,states)
+    n = candidates(board,state,level,tap_period,states,reaction)
     scratch = np.zeros(N_FEATURES)
     values = np.full(n,DEAD)
     placement = np.zeros(n)
@@ -450,9 +505,9 @@ def choose(board,state,next_orientation,level,start_level,lines,tap_period,well,
         child_level = level_after(start_level,lines+cleared)
         if expect>0:
             child = expected_child(result,next_orientation,states[i,4],child_level,start_level,lines+cleared,
-                tap_period,well,w,expect,child_states,np.zeros((MAX_CANDIDATES,9),np.int64),ban if child_ban else 0)
+                tap_period,reaction,well,w,expect,child_states,np.zeros((MAX_CANDIDATES,9),np.int64),ban if child_ban else 0)
         else:
-            child = best_child(result,next_orientation,states[i,4],child_level,tap_period,well,w,scratch,child_states,
+            child = best_child(result,next_orientation,states[i,4],child_level,tap_period,reaction,well,w,scratch,child_states,
                 ban if child_ban else 0)
         total = placement[i]+child if child>DEAD else DEAD+values[i]
         if values[i]<BANNED/2:
@@ -481,7 +536,7 @@ def _draw(state,count,last):
 @njit(cache=True)
 def play(w_score,w_survive,seed,start_level,max_lines,tap_period,well,beam,initial_score,max_placements,
          stop_at_maxout=False,well_survive=-1,switch_level=999,expect=0,ban=0,ban_from=0,child_ban=False,
-         ban_w=np.zeros(0),alt_w=np.zeros(0),alt_below=0,alt_well=9):
+         ban_w=np.zeros(0),alt_w=np.zeros(0),alt_below=0,alt_well=9,reaction=REACTION):
     """One simulated game. Returns an int64 stats vector (see GAME_STATS)."""
     rng = 0x8988
     for _ in range(seed%32767):
@@ -524,7 +579,7 @@ def play(w_score,w_survive,seed,start_level,max_lines,tap_period,well,beam,initi
         if failed:
             dead = True
             break
-        index,n = choose(board,state,upcoming,level,start_level,lines,tap_period,mode_well,w,beam,states,child_states,
+        index,n = choose(board,state,upcoming,level,start_level,lines,tap_period,reaction,mode_well,w,beam,states,child_states,
             expect,ban if lines>=ban_from else 0,child_ban)
         if n==0:
             dead = True
@@ -570,13 +625,19 @@ GAME_STATS = ('lines','score','placements','dead','level','maxout_lines','single
 def play_game(w_score=DEFAULT_SCORE,w_survive=DEFAULT_SURVIVE,*,seed=0,start_level=18,max_lines=400,
               tap_period=2,well=9,beam=0,initial_score=0,max_placements=100000,stop_at_maxout=False,
               well_survive=-1,switch_level=999,expect=0,ban=0,ban_from=0,child_ban=False,ban_weights=None,
-              alt_weights=None,alt_below=0,alt_well=9):
+              alt_weights=None,alt_below=0,alt_well=9,reaction=REACTION):
     out = play(np.asarray(w_score,dtype=np.float64),np.asarray(w_survive,dtype=np.float64),int(seed),
         int(start_level),int(max_lines),int(tap_period),int(well),int(beam),int(initial_score),int(max_placements),
         bool(stop_at_maxout),int(well_survive),int(switch_level),int(expect),int(ban),int(ban_from),bool(child_ban),
         np.zeros(0) if ban_weights is None else np.asarray(ban_weights,dtype=np.float64),
-        np.zeros(0) if alt_weights is None else np.asarray(alt_weights,dtype=np.float64),int(alt_below),int(alt_well))
+        np.zeros(0) if alt_weights is None else np.asarray(alt_weights,dtype=np.float64),int(alt_below),int(alt_well),int(reaction))
     return dict(zip(GAME_STATS,(int(v) for v in out)))
+
+
+def stack_height(board):
+    """Rows from the floor to the highest filled cell."""
+    rows = np.flatnonzero(np.asarray(board).any(axis=1))
+    return 0 if rows.size==0 else 20-int(rows[0])
 
 
 def action_features(observation,plan,well=9):
@@ -597,9 +658,9 @@ class TunedSelector:
     the single visible next piece. Exposes score_actions for crash_alerts.
     """
     def __init__(self,w_score=DEFAULT_SCORE,w_survive=DEFAULT_SURVIVE,*,well=9,well_survive=-1,beam=0,tap_period=2,
-                 switch_level=999,expect=0,zones=()):
-        self.w_score = np.asarray(w_score,dtype=np.float64)
-        self.w_survive = np.asarray(w_survive,dtype=np.float64)
+                 switch_level=999,expect=0,zones=(),reaction=REACTION,alt=None):
+        self.w_score = pad_weights(w_score)
+        self.w_survive = pad_weights(w_survive)
         if self.w_score.shape!=(N_FEATURES,) or self.w_survive.shape!=(N_FEATURES,):
             raise ValueError(f'Expected {N_FEATURES} weights per mode')
         self.well,self.well_survive,self.beam,self.tap_period = well,well_survive,beam,tap_period
@@ -608,15 +669,26 @@ class TunedSelector:
         # (first level, last level, weights, well[, child ban mask, expect]): replaces the
         # mode weights there; the ban (e.g. 2 = singles) also applies to lookahead children.
         self.zones = tuple(self._zone(*z) for z in zones)
+        # Frames the controller waits after spawn before its first input (lookahead children
+        # are enumerated with the same schedule).
+        self.reaction = int(reaction)
+        # Low-stack tetris mode outside the zones: (weights, max stack rows, well column,
+        # ((first level, last level), ...)[, burn weights used above that stack height]) on the
+        # raw level byte, so it repeats every lap.
+        self.alt = None
+        if alt is not None:
+            alt_w,below,alt_well,ranges = alt[:4]
+            burn = None if len(alt)<5 or alt[4] is None else pad_weights(alt[4])
+            self.alt = (pad_weights(alt_w),int(below),int(alt_well),tuple((int(a),int(b)) for a,b in ranges),burn)
         self.grand_states = np.zeros((MAX_CANDIDATES,9),np.int64)
         self.switched = False
         self.states = np.zeros((MAX_CANDIDATES,9),np.int64)
         self.scratch = np.zeros(N_FEATURES)
         self.calls = 0
-        self.modes = dict(score=0,survive=0,zone=0)
+        self.modes = dict(score=0,survive=0,zone=0,alt=0)
 
     def _zone(self,lo,hi,w,well,ban=0,expect=None):
-        return (int(lo),int(hi),np.asarray(w,dtype=np.float64),int(well),int(ban),
+        return (int(lo),int(hi),pad_weights(w),int(well),int(ban),
             self.expect if expect is None else int(expect))
 
     def score_actions(self,observation,plan):
@@ -630,11 +702,22 @@ class TunedSelector:
         well = self.well_survive if survive else self.well
         ban,expect = 0,self.expect
         push_min,push_mask = push_rule(observation.level)
+        in_zone = False
         for lo,hi,zone_w,zone_well,zone_ban,zone_expect in self.zones:
             if lo<=observation.level<=hi:
                 w,well,ban,expect = zone_w,zone_well,zone_ban,zone_expect
                 self.modes['zone'] += 1
+                in_zone = True
                 break
+        if self.alt is not None and not in_zone:
+            alt_w,below,alt_well,ranges,burn = self.alt
+            if any(lo<=observation.level<=hi for lo,hi in ranges):
+                if stack_height(observation.board)<=below:
+                    w,well = alt_w,alt_well
+                    self.modes['alt'] += 1
+                elif burn is not None:
+                    w,well = burn,-1
+                    self.modes['burn'] = self.modes.get('burn',0)+1
         actions = plan.actions
         rows = action_features(observation,plan,well)
         values = rows@w
@@ -666,10 +749,10 @@ class TunedSelector:
             if expect>0:
                 # Gravity only: start18 progression from the visible line count.
                 child = expected_child(board,next_orientation,das,min(level,29),18,
-                    observation.lines+int(actions.lines[i]),self.tap_period,well,w,expect,
+                    observation.lines+int(actions.lines[i]),self.tap_period,self.reaction,well,w,expect,
                     self.states,self.grand_states,ban,push_min,push_mask)
             else:
-                child = best_child(board,next_orientation,das,min(level,29),self.tap_period,
+                child = best_child(board,next_orientation,das,min(level,29),self.tap_period,self.reaction,
                     well,w,self.scratch,self.states,ban,push_min,push_mask)
             # Expanded proposals rank by two-ply value, kept above unexpanded ones.
             result[i] = 1.e6+placement[i]+child if child>DEAD else DEAD/2
@@ -679,7 +762,8 @@ class TunedSelector:
         return int(np.argmax(self.score_actions(observation,plan)))
 
     def stats(self):
-        return dict(calls=self.calls,modes=dict(self.modes),well=self.well,well_survive=self.well_survive,beam=self.beam,switch_level=self.switch_level,expect=self.expect,
+        return dict(calls=self.calls,modes=dict(self.modes),reaction=self.reaction,
+            alt=None if self.alt is None else dict(below=self.alt[1],well=self.alt[2],levels=self.alt[3]),well=self.well,well_survive=self.well_survive,beam=self.beam,switch_level=self.switch_level,expect=self.expect,
             zones=[(lo,hi,zw,zb,ze) for lo,hi,_,zw,zb,ze in self.zones],
             information='Visible board, counters and single visible next piece only')
 
@@ -688,25 +772,40 @@ def _zone_from_file(selector,path,lo,hi,ban,expect):
     import json
     from pathlib import Path
     data = json.loads(Path(path).read_text(encoding='utf-8'))
-    if data.get('features')!=list(FEATURES):
+    if data.get('features') not in (list(FEATURES),list(FEATURES[:N_REACH0])):
         raise ValueError(f'{path} was written for a different feature list')
     mode = data.get('mode','survive')
     return selector._zone(lo,hi,data[mode],data.get('well_survive' if mode=='survive' else 'well',-1),ban,expect)
 
 
 def tuned_selector(weights='score_start',*,beam=3,expect=0,zone_weights=None,zone_levels=(156,158),
-                   zone_ban=2,zone_expect=2,extra_zones=()):
+                   zone_ban=2,zone_expect=2,extra_zones=(),reaction=REACTION,alt_weights=None,alt_levels=None):
     """Build a TunedSelector from a tune.py weights.json or a built-in name.
 
     score_start: untuned tetris mode at levels18-28, Dellacherie after.
     dellacherie: Dellacherie in both modes (adds visible-next lookahead).
+    reaction: frames the controller waits after spawn before its first input.
+    alt_weights: low-stack tetris weights.json (alt_weights, alt_below, alt_well[, alt_levels]),
+    used outside the zones; alt_levels ((first, last), ...) overrides the file's levels.
     """
     selector = _build_selector(weights,beam,expect)
+    selector.reaction = int(reaction)
+    if alt_weights:
+        import json
+        from pathlib import Path
+        data = json.loads(Path(alt_weights).read_text(encoding='utf-8'))
+        if data.get('features')!=list(FEATURES):
+            raise ValueError(f'{alt_weights} was written for a different feature list')
+        levels = alt_levels or data.get('alt_levels') or ((29,153),(176,245))
+        burn = data.get('burn_weights')
+        selector.alt = (pad_weights(data['alt_weights']),int(data['alt_below']),int(data.get('alt_well',9)),
+                        tuple((int(a),int(b)) for a,b in levels),None if burn is None else pad_weights(burn))
+        selector.alt_source = str(alt_weights)
     if zone_weights:
         import json
         from pathlib import Path
         data = json.loads(Path(zone_weights).read_text(encoding='utf-8'))
-        if data.get('features')!=list(FEATURES):
+        if data.get('features') not in (list(FEATURES),list(FEATURES[:N_REACH0])):
             raise ValueError(f'{zone_weights} was written for a different feature list')
         mode = data.get('mode','survive')
         selector.zones = (selector._zone(zone_levels[0],zone_levels[1],data[mode],
@@ -729,7 +828,7 @@ def _build_selector(weights,beam,expect):
     import json
     from pathlib import Path
     data = json.loads(Path(weights).read_text(encoding='utf-8'))
-    if data.get('features')!=list(FEATURES):
+    if data.get('features') not in (list(FEATURES),list(FEATURES[:N_REACH0])):
         raise ValueError(f'{weights} was written for a different feature list')
     return TunedSelector(data['score'],data['survive'],well=data['well'],well_survive=data.get('well_survive',-1),
         beam=beam,switch_level=data.get('switch_level',999),expect=expect)
@@ -741,16 +840,20 @@ def warmup(selector):
     out = np.zeros(N_FEATURES)
     pairs = [(w,well) for w in (selector.w_score,selector.w_survive)
              for well in (selector.well,selector.well_survive)]+[(w,well) for _,_,w,well,_,_ in selector.zones]
+    if selector.alt is not None:
+        pairs.append((selector.alt[0],selector.alt[2]))
+        if selector.alt[4] is not None:
+            pairs.append((selector.alt[4],-1))
     for w,well in pairs:
         board_features(board,well,out)
         placement_features(board,5,18,2,0,out)
-        best_child(board,2,0,18,selector.tap_period,well,w,out,selector.states)
+        best_child(board,2,0,18,selector.tap_period,selector.reaction,well,w,out,selector.states)
         for expect in {selector.expect,*(z[5] for z in selector.zones)}:
             for ban in (0,2):
                 if expect>0:
-                    expected_child(board,2,0,18,18,0,selector.tap_period,well,w,expect,
+                    expected_child(board,2,0,18,18,0,selector.tap_period,selector.reaction,well,w,expect,
                         selector.states,selector.grand_states,ban)
-                best_child(board,2,0,18,selector.tap_period,well,w,out,selector.states,ban,3,6)
+                best_child(board,2,0,18,selector.tap_period,selector.reaction,well,w,out,selector.states,ban,3,6)
     return selector
 
 
@@ -774,7 +877,7 @@ def warm_paths(selector,levels=(100,154,156,157,158,168,170,173,247,249,250,253)
     states = np.zeros((MAX_CANDIDATES,9),np.int64)
     for level in levels:
         state,_ = spawn_state(SPAWNS[6],0,board,min(level,29))
-        n = candidates(board,state,min(level,29),selector.tap_period,states)
+        n = candidates(board,state,min(level,29),selector.tap_period,states,selector.reaction)
         boards,cleared,dead,controls = [],[],[],[]
         for i in range(n):
             result,c,d = lock(board,int(states[i,0]),int(states[i,1]),int(states[i,2]))
