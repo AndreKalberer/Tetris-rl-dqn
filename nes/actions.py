@@ -76,14 +76,40 @@ def preview_lock(board,state):
     return result,cleared,False
 
 
-def enumerate_actions(observation,rules=ActionRules(),*,board_input=False):
-    if observation.phase!=Phase.ACTIVE:
-        raise ValueError('Plan only for an active piece')
+_FAST = None
+
+
+def _fast_module():
+    """nes.fast_paths when numba is available (NES_FAST_PATHS=0 forces the Python loop)."""
+    global _FAST
+    if _FAST is None:
+        import os
+        _FAST = False
+        if os.environ.get('NES_FAST_PATHS','1')!='0':
+            try:
+                from nes import fast_paths
+                _FAST = fast_paths
+            except ImportError:
+                pass
+    return _FAST
+
+
+def _timed_paths(observation,rules,piece):
+    """(path, locked control) for each (orientation, x) target, in a fixed order."""
+    fast=_fast_module()
+    if fast:
+        paths,lengths,finals=fast.timed_paths(observation.board,observation.control,observation.level,piece,rules)
+        if (lengths<0).any():
+            raise RuntimeError('Timed candidate did not lock within its action bound')
+        return [(tuple(int(b) for b in paths[i,:lengths[i]]),Control(*(int(v) for v in finals[i])))
+                for i in range(len(lengths))]
+    return _timed_paths_python(observation,rules,piece)
+
+
+def _timed_paths_python(observation,rules,piece):
     board=observation.board
-    piece=TYPE[observation.control.orientation]
-    options=[]
-    seen={}
     transitions={}
+    result=[]
     for target in range(19):
         if TYPE[target]!=piece: continue
         min_x=-min(dx for dx,dy in CELLS[target])
@@ -116,14 +142,26 @@ def enumerate_actions(observation,rules=ActionRules(),*,board_input=False):
                 if failed: break
             else:
                 raise RuntimeError('Timed candidate did not lock within its action bound')
-            result,cleared,terminal=preview_lock(board,state)
-            key=(result.astype(bool).tobytes(),state.das,terminal)
-            candidate=(result,cleared,terminal,tuple(path),state)
-            if key not in seen:
-                seen[key]=len(options)
-                options.append(candidate)
-            elif len(path)<len(options[seen[key]][3]):
-                options[seen[key]]=candidate
+            result.append((tuple(path),state))
+    return result
+
+
+def enumerate_actions(observation,rules=ActionRules(),*,board_input=False):
+    if observation.phase!=Phase.ACTIVE:
+        raise ValueError('Plan only for an active piece')
+    board=observation.board
+    piece=TYPE[observation.control.orientation]
+    options=[]
+    seen={}
+    for path,state in _timed_paths(observation,rules,piece):
+        result,cleared,terminal=preview_lock(board,state)
+        key=(result.astype(bool).tobytes(),state.das,terminal)
+        candidate=(result,cleared,terminal,tuple(path),state)
+        if key not in seen:
+            seen[key]=len(options)
+            options.append(candidate)
+        elif len(path)<len(options[seen[key]][3]):
+            options[seen[key]]=candidate
     boards=np.asarray([row[0] for row in options])
     lines=np.asarray([row[1] for row in options],dtype=np.int64)
     terminal=np.asarray([row[2] for row in options],dtype=bool)
