@@ -209,6 +209,80 @@ class _WindowsPipes:
         self.handles = []
 
 
+class _PosixPipes:
+    """Linux/macOS twin of _WindowsPipes: two FIFOs in a private temp folder.
+
+    Same protocol and ordering as the Windows pipes (Lua opens its input first,
+    then its output). Reads use select() so the idle watchdog can abort them.
+    """
+    def __init__(self, *, blocking=False):
+        import tempfile
+        self.blocking = blocking
+        self.folder = tempfile.mkdtemp(prefix='nes-ref-')
+        self.to_lua = os.path.join(self.folder, 'in')
+        self.from_lua = os.path.join(self.folder, 'out')
+        os.mkfifo(self.to_lua, 0o600); os.mkfifo(self.from_lua, 0o600)
+        self.write_fd = self.read_fd = None
+        self.buffer = b''
+        self._aborted = False
+        self.cancel_error = None
+
+    def connect(self, process, timeout):
+        import errno
+        deadline = time.monotonic()+timeout
+        while self.write_fd is None:
+            try: self.write_fd = os.open(self.to_lua, os.O_WRONLY|os.O_NONBLOCK)
+            except OSError as error:
+                if error.errno != errno.ENXIO: raise  # ENXIO: Lua has not opened its end yet
+                if process.poll() is not None: raise MesenFault('Mesen exited while connecting IPC')
+                if time.monotonic()>deadline: raise MesenFault('Named-pipe connection timeout')
+                time.sleep(.001)
+        os.set_blocking(self.write_fd, True)
+        self.read_fd = os.open(self.from_lua, os.O_RDONLY|os.O_NONBLOCK)
+
+    def send(self, text):
+        data = (text+'\n').encode('ascii')
+        if os.write(self.write_fd, data) != len(data): raise MesenFault('Partial controller command write')
+
+    def _fill(self, wait):
+        import select
+        ready,_,_ = select.select([self.read_fd],[],[],wait)
+        if not ready: return False
+        try: chunk = os.read(self.read_fd, 65536)
+        except BlockingIOError: return False
+        if not chunk:
+            # No writer (yet, or Mesen exited): callers poll the process and the watchdog.
+            time.sleep(min(wait,.001)); return False
+        self.buffer += chunk
+        if len(self.buffer)>1024*1024: raise MesenFault('Named-pipe response exceeds bounded message size')
+        return True
+
+    def receive(self):
+        if self.blocking:
+            while b'\n' not in self.buffer:
+                if self._aborted: raise OSError(125, 'Pipe read aborted')  # ECANCELED
+                self._fill(.05)
+        elif b'\n' not in self.buffer:
+            self._fill(0)
+        if b'\n' in self.buffer:
+            line,self.buffer = self.buffer.split(b'\n',1)
+            return json.loads(line)
+        return None
+
+    def abort_read(self):
+        self._aborted = True
+
+    def close(self):
+        self._aborted = True
+        for fd in (self.write_fd, self.read_fd):
+            if fd is not None:
+                try: os.close(fd)
+                except OSError: pass
+        self.write_fd = self.read_fd = None
+        import shutil
+        shutil.rmtree(self.folder, ignore_errors=True)
+
+
 class MesenGame:
     """OriginalGame-compatible gameplay API, using only genuine controller input.
 
@@ -221,8 +295,6 @@ class MesenGame:
     def __init__(self, rom_path=None, *, executable=None, session_root=None,
                  action_timeout=30, process_timeout=3600, watchdog_frames=600,
                  affinity=0x5000, transport='pipe', stall_grace_frames=None):
-        if os.name != 'nt':
-            raise RuntimeError('This reference launcher currently supports Windows only')
         # Opt-in (None keeps the frozen default): classify semantic stalls and
         # give a ROM-resident, NMI-advancing loop extra frames for legal rescue.
         if stall_grace_frames is not None and (isinstance(stall_grace_frames,bool) or
@@ -240,11 +312,12 @@ class MesenGame:
         if self.rom_sha256 != ROM_SHA256:
             raise ValueError('Expected original Nintendo USA/NTSC Tetris image')
         self.bridge = Path(__file__).with_name('mesen_bridge.lua')
-        dependencies = ('MesenCore.dll','MesenNesDB.txt')
+        core = 'MesenCore.dll' if os.name=='nt' else 'MesenCore.so'
+        dependencies = (core,'MesenNesDB.txt')
         if not all(self.executable.with_name(name).is_file() for name in dependencies):
             raise ValueError('Initialize the dedicated portable build once before using the reference adapter')
         self.identity = dict(executable_sha256=hashlib.sha256(self.executable.read_bytes()).hexdigest(),
-            core_sha256=hashlib.sha256(self.executable.with_name('MesenCore.dll').read_bytes()).hexdigest(),
+            core_sha256=hashlib.sha256(self.executable.with_name(core).read_bytes()).hexdigest(),
             database_sha256=hashlib.sha256(self.executable.with_name('MesenNesDB.txt').read_bytes()).hexdigest(),
             bridge_sha256=hashlib.sha256(self.bridge.read_bytes()).hexdigest(), profile=list(PROFILE))
         self.session_root = Path(session_root or Path.cwd() / 'runs' / 'mesen-reference').resolve()
@@ -333,7 +406,8 @@ class MesenGame:
         entry = self.session_dir / 'entry.lua'
         pipe_config = ''
         if self.transport in ('pipe','pipe-blocking'):
-            self._pipes = _WindowsPipes(blocking=self.transport=='pipe-blocking')
+            pipes = _WindowsPipes if os.name=='nt' else _PosixPipes
+            self._pipes = pipes(blocking=self.transport=='pipe-blocking')
             pipe_config = 'MESEN_BRIDGE_PIPE_IN=' + json.dumps(self._pipes.to_lua) + '\n'
             pipe_config += 'MESEN_BRIDGE_PIPE_OUT=' + json.dumps(self._pipes.from_lua) + '\n'
         entry.write_text('MESEN_BRIDGE_ROOT=' + json.dumps(self.session_dir.as_posix() + '/') + '\n'
@@ -347,12 +421,21 @@ class MesenGame:
         (self.session_dir / 'launch.json').write_text(json.dumps(dict(command=command,
             identity=self.identity, rom_sha256=self.rom_sha256, affinity=self.affinity), indent=2), encoding='utf-8')
         self._logs = [(self.session_dir / name).open('wb') for name in ('stdout.log', 'stderr.log')]
-        startup = subprocess.STARTUPINFO()
-        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startup.wShowWindow = 0
-        self._process = subprocess.Popen(command, cwd=self.executable.parent,
-            stdout=self._logs[0], stderr=self._logs[1], startupinfo=startup,
-            creationflags=subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS)
+        if os.name=='nt':
+            startup = subprocess.STARTUPINFO()
+            startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startup.wShowWindow = 0
+            self._process = subprocess.Popen(command, cwd=self.executable.parent,
+                stdout=self._logs[0], stderr=self._logs[1], startupinfo=startup,
+                creationflags=subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS)
+        else:
+            # Headless test runner. Affinity is set before exec so every thread inherits it.
+            cpus = None if self.affinity is None else {i for i in range(self.affinity.bit_length()) if self.affinity>>i&1}
+            def limit():
+                if cpus: os.sched_setaffinity(0, cpus)
+                os.nice(5)
+            self._process = subprocess.Popen(command, cwd=self.executable.parent,
+                stdout=self._logs[0], stderr=self._logs[1], stdin=subprocess.DEVNULL, preexec_fn=limit)
         if self._pipes is not None:
             # Lua's blocking C read cannot run its own timeout hook. This
             # independent host thread bounds idle waits and kills only our child.
@@ -377,7 +460,7 @@ class MesenGame:
                         return
             self._idle_thread = threading.Thread(target=idle_watchdog,daemon=True)
             self._idle_thread.start()
-        if self.affinity is not None:
+        if self.affinity is not None and os.name=='nt':
             import ctypes
             kernel = ctypes.WinDLL('kernel32', use_last_error=True)
             kernel.SetProcessAffinityMask.argtypes = [ctypes.c_void_p, ctypes.c_size_t]

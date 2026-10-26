@@ -9,6 +9,7 @@ from enum import IntFlag
 import hashlib
 from importlib.metadata import version
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -103,6 +104,8 @@ class Snapshot:
 
 def bundled_rom():
     # Use the installed dependency asset in place; never copy it into this repo.
+    # NES_ROM_PATH points at the same image elsewhere (e.g. a cloud machine without gym-tetris).
+    if os.environ.get('NES_ROM_PATH'): return Path(os.environ['NES_ROM_PATH'])
     import gym_tetris
     return Path(gym_tetris.__file__).parent / '_roms' / 'Tetris.nes'
 
