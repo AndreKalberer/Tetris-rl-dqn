@@ -151,3 +151,22 @@ class AltModeTest(unittest.TestCase):
                 selector.score_actions(obs,_plan(board,level))
                 changed = {k for k in selector.modes if selector.modes[k]!=before.get(k,0)}-{'score','survive'}
                 self.assertEqual(changed,set() if mode is None else {mode})
+
+    def test_alt_file_keys_set_ban_and_expectations(self):
+        from pathlib import Path
+        path = Path(sim.__file__).parent/'weights'/'tetris-cem-b7-expect2.json'
+        selector = sim.tuned_selector('dellacherie',beam=3,reaction=0,alt_weights=str(path))
+        self.assertEqual((selector.alt[1],selector.alt_expect,selector.burn_expect,selector.alt_ban),(7,2,2,0))
+
+    def test_alt_ban_ranks_banned_clears_last(self):
+        selector = sim.TunedSelector(sim.DELLACHERIE,sim.DELLACHERIE,well=-1,well_survive=-1,beam=0,
+            alt=(sim.SCORE_START,6,9,((29,153),),None))
+        selector.alt_ban = 0b1110
+        board = np.zeros((20,10),np.bool_); board[19,1:] = True; board[18,2:] = True   # clears are reachable
+        plan = _plan(board,100)
+        obs = SimpleNamespace(board=board.astype(np.uint8),level=100,lines=1000,score=999999,placements=0,
+                              next_orientation=int(sim.SPAWNS[2]))
+        values = selector.score_actions(obs,plan)
+        cleared = np.asarray(plan.actions.lines)
+        self.assertTrue((cleared>0).any())
+        self.assertLess(values[cleared>0].max(),values[cleared==0].min())

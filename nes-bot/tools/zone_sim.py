@@ -36,6 +36,8 @@ from nes_original.progression import after_clear  # noqa: E402
 ZONES = {'early': (1340, 176), 'late': (3140, 255), 'mid': (1440, 160),
          'lap2early': (4700, 176), 'lap2late': (6500, 255)}
 # Modelled fatal probability of a zero-line lock without pushdown (outputs/NES-CRASH-MAP-RESEARCH.json).
+# Level bands for the score breakdown (raw level byte; repeats every lap).
+BANDS = ((18, 28), (29, 130), (131, 153), (154, 175), (176, 235), (236, 245), (246, 255), (0, 17))
 ZERO_LINE_CRASH = {249: {'hZ': .75, 'other': .583}, 253: {'other': .104}, 255: {'hZ': .104, 'other': .75}}
 LEVEL_AT = [18]
 for _ in range(20000):
@@ -84,6 +86,7 @@ def play(job):
         prio.counts = [0, int(rng.integers(900, 1300)), int(rng.integers(150, 260)), int(rng.integers(5, 20)), 0]
     level = LEVEL_AT[lines]
     points = 0
+    bands = [[0, 0, 0, 0, 0, 0, 0, 0] for _ in BANDS]   # points, lines, tetris lines, placements, clears 1-4
     reaction = int(config.get('reaction', 3))
     prio.counts_known, prio.previous = True, (placements, lines)
     board = np.zeros((20, 10), np.bool_)
@@ -107,7 +110,7 @@ def play(job):
     moves = []
     def end(result, **extra):
         return dict(seed=seed, result=result, level=level, lines=lines, points=points, snapshots=snapshots,
-                    moves=moves, **extra)
+                    moves=moves, bands={f'{a}-{b}': v for (a, b), v in zip(BANDS, bands)}, **extra)
 
     while (lines < config['stop_lines']) if full else (level < stop_level):
         for t in (1480, 1500, 1510):
@@ -167,7 +170,14 @@ def play(job):
         board = boards[index].astype(np.bool_)
         das = controls[index].das
         level, lines = LEVEL_AT[lines+int(cleared[index])], lines+int(cleared[index])
-        points += int(sim.BASE_POINTS[int(cleared[index])])*(level+1)
+        gained = int(sim.BASE_POINTS[int(cleared[index])])*(level+1)
+        points += gained
+        if cleared[index]:
+            band = next(k for k, (a, b) in enumerate(BANDS) if a <= level <= b)
+            bands[band][0] += gained
+            bands[band][1] += int(cleared[index])
+            bands[band][2] += 4 if cleared[index] == 4 else 0
+            bands[band][3+int(cleared[index])] += 1
         placements += 1
         for _ in range(frames[index] + 14 + (20 if cleared[index] else 0)):
             lfsr = sim._lfsr(lfsr)
@@ -237,7 +247,12 @@ def main():
     summary = dict(zone=args.zone, games=len(rows), passes=passes, pass_rate=passes/len(rows),
                    failures=dict(sorted(by_level.items(), key=lambda kv: -kv[1])),
                    mean_points=float(np.mean([r['points'] for r in rows])),
-                   mean_lines=float(np.mean([r['lines'] for r in rows])), config=config)
+                   mean_lines=float(np.mean([r['lines'] for r in rows])),
+                   bands={k: dict(points_m=round(float(np.mean([r['bands'][k][0] for r in rows]))/1e6, 2),
+                                  lines=round(float(np.mean([r['bands'][k][1] for r in rows])), 1),
+                                  clears=[round(float(np.mean([r['bands'][k][j] for r in rows])), 1) for j in (4, 5, 6, 7)],
+                                  tetris_rate=round(sum(r['bands'][k][2] for r in rows)/max(1, sum(r['bands'][k][1] for r in rows)), 3))
+                          for k in rows[0]['bands']}, config=config)
     print(json.dumps(summary, indent=1))
     if args.output:
         args.output.write_text(json.dumps(dict(summary=summary, rows=rows), indent=1))

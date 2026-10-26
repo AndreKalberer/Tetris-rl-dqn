@@ -11,6 +11,16 @@ result exactly (`case_state: verified`). Seed = frames waited on the menu. Uncap
 |---|---|---|---|---|
 | v8b | 19211 | 511 | 6,651 | 43,047,996 |
 
+## Score bot (level 255, score per lap)
+
+| Bot | Seed | Lines | Uncapped score | Tetrises |
+|---|---|---|---|---|
+| score50 (`run-score50.sh`) | 957 | 3,290 | 58,187,903 | 185 |
+| score50 (`run-score50.sh`) | 24340 | 3,290 | 55,723,090 | 190 |
+
+Both played headless on a Linux cloud machine; the uncapped score matched the real counter at
+every check (0 mismatches).
+
 ## Level 255
 
 | Bot version | Seed | Lines | Uncapped score |
