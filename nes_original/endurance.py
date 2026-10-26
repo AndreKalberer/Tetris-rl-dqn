@@ -68,6 +68,8 @@ def main():
     parser.add_argument('--reaction-frames', type=int, default=3,
                         help='neutral frames after spawn before the first input (planning time past '
                              'max(1, this) frames is charged as idle frames)')
+    parser.add_argument('--late-plan', choices=('replan', 'keep'), default='replan',
+                        help='plan over budget: replan from the new pose (v8c) or keep it and start late')
     parser.add_argument('--alt-weights',
                         help='tuned selectors: low-stack tetris weights.json used outside the zones')
     parser.add_argument('--alt-levels', type=int, nargs='+',
@@ -132,7 +134,8 @@ def main():
         elif args.selector == 'tuned-crash-map':
             from nes_original.crash_model import CrashMapPrioritizer
             selector = CrashMapPrioritizer(base_selector=selector)
-    config = Config(prior='lookahead', tap_period=2, threads=1, reaction_frames=args.reaction_frames)
+    config = Config(prior='lookahead', tap_period=2, threads=1, reaction_frames=args.reaction_frames,
+                    late_plan=args.late_plan)
     if args.policy:
         model, _ = load_policy(args.policy)
         config = model.feature_config
@@ -165,6 +168,7 @@ def main():
         zone_expect=args.zone_expect if args.zone_weights else None,
         extra_zones=args.extra_zone or None,
         reaction_frames=args.reaction_frames,
+        late_plan=args.late_plan,
         alt_weights=args.alt_weights if args.selector.startswith('tuned') else None,
         alt_levels=args.alt_levels,
         selector_parameters=selector.stats() if selector and hasattr(selector, 'stats') else None,

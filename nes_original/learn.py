@@ -65,12 +65,15 @@ class Config:
     prior: str = 'heuristic'
     exploration_top_k: int = 0
     reaction_frames: int = 3
+    late_plan: str = 'replan'
 
     def __post_init__(self):
         if self.capacity < max(self.batch_size,self.learning_starts) or min(
                 self.batch_size,self.train_every,self.target_every,self.epsilon_steps,self.threads) < 1:
             raise ValueError('Invalid replay/update settings')
         ActionRules(horizontal_period=self.tap_period,reaction_frames=self.reaction_frames)
+        if self.late_plan not in ('replan','keep'):
+            raise ValueError("Late plan handling must be 'replan' or 'keep'")
         if self.prior not in ('heuristic','lookahead') or self.exploration_top_k<0:
             raise ValueError('Invalid prior/exploration mode')
 
@@ -390,6 +393,7 @@ def evaluate(model, output, *, seeds=VALIDATION_SEEDS, runtime=False, max_frames
     for seed in seeds:
         controller = FeedbackController(fixed_reaction=not runtime,tap_period=config.tap_period,
             reaction_frames=getattr(config,'reaction_frames',3),
+            late_plan=getattr(config,'late_plan','replan'),
             no_softdrop_at_1g=no_softdrop_at_1g,
             no_softdrop_levels=no_softdrop_levels,
             nonactive_input=nonactive_input,
