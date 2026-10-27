@@ -142,6 +142,13 @@ python -m pip install -e .
 or set `PYTHONPATH` to the folders you need (for example `PYTHONPATH=nes-bot` for the NES bot).
 Run commands from the repository root; output goes to `runs/` there.
 
+## Contributing
+
+New work follows [CONTRIBUTING.md](CONTRIBUTING.md): where files go in the folder layout,
+branch names (`<area>/<short-topic>`), one goal per PR with the
+[PR template](.github/pull_request_template.md), merge commits on GitHub, and which README
+or results file to update in the same PR.
+
 ## Limits
 
 - Results are verified **in an emulator (MesenCE 2.2.1), not on NES hardware**.
