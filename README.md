@@ -17,7 +17,7 @@ Two Tetris-playing bots, each judged only by results that are replayed and verif
 ## Headline results
 
 **Original NES cartridge, MesenCE 2.2.1, from level 18** — full list in
-[docs/RESULTS-255.md](docs/RESULTS-255.md):
+[nes-bot/docs/RESULTS-255.md](nes-bot/docs/RESULTS-255.md):
 
 | Result | Verified games | Detail |
 |---|---|---|
@@ -26,7 +26,7 @@ Two Tetris-playing bots, each judged only by results that are replayed and verif
 | Current bot (v8c) | 6 of 7 | development games reached 255; the crash-zone simulator estimates about 94–95% per game (simulator estimate, not a verified rate). |
 
 **Offline Sprint v1** (this project's own modern ruleset) — details in
-[docs/OFFLINE-SPRINT.md](docs/OFFLINE-SPRINT.md):
+[modern-rules/docs/OFFLINE-SPRINT.md](modern-rules/docs/OFFLINE-SPRINT.md):
 
 - **20/20** reserved 40-line games passed (target was 18/20), each verified by replaying only
   its frame-numbered inputs; zero rejected inputs, board mismatches or planning overruns.
@@ -52,7 +52,7 @@ flowchart LR
   clear can make the score routine overrun into the frame interrupt and crash the CPU;
   whether it does depends on the level, line count, which rows clear, soft-drop points and
   a little unobservable timing. Danger zones are roughly levels 154–173 and 247–255.
-- **Crash avoidance** uses `nes_original/crash_cycle_model.py`, a Python port of
+- **Crash avoidance** uses `nes-bot/nes_original/crash_cycle_model.py`, a Python port of
   HydrantDude's crash-timing model as implemented in TetrisGYM, validated on 986 of 988
   community sheet cells and on the crashes observed in real runs. The bot plays the
   safest surviving move, decides per move whether to hold Down, and accepts some risk only
@@ -61,7 +61,7 @@ flowchart LR
   evaluator whose weights were tuned on a simulator. The learned (DQN) policies in this
   repository belong to the Offline Sprint and the earlier NES learning pilots.
 
-Full explanation: [docs/NES-255.md](docs/NES-255.md).
+Full explanation: [nes-bot/docs/NES-255.md](nes-bot/docs/NES-255.md).
 
 ## Verification
 
@@ -79,59 +79,75 @@ to play.
 **Offline Sprint** (installs `.venv`, pinned CPU dependencies, and runs the tests):
 
 ```powershell
-.\setup.ps1
-.\play.ps1            # watch the bot
-.\play.ps1 -Human     # play yourself
-.\evaluate.ps1        # reproduce the 20-seed acceptance evaluation
+.\modern-rules\setup.ps1
+.\modern-rules\play.ps1            # watch the bot
+.\modern-rules\play.ps1 -Human     # play yourself
+.\modern-rules\evaluate.ps1        # reproduce the 20-seed acceptance evaluation
 ```
 
 **NES level-255 bot.** Needs a portable
 [MesenCE 2.2.1](https://github.com/nesdev-org/MesenCE/releases/tag/2.2.1) and the original
 USA game image already installed by the `gym-tetris` dependency (no game image is included
 in this repository). Set up the isolated environment as described in
-[docs/NES-ORIGINAL-REFERENCE.md](docs/NES-ORIGINAL-REFERENCE.md) (`.\setup-nes-original.ps1`,
-plus `requirements-nes-search.txt` for the compiled planner), then point the launcher at it
+[nes-bot/docs/NES-ORIGINAL-REFERENCE.md](nes-bot/docs/NES-ORIGINAL-REFERENCE.md) (`.\nes-bot\setup-nes-original.ps1`,
+plus `nes-bot/requirements-nes-search.txt` for the compiled planner), then point the launcher at it
 with the `MESEN`, `PY` and `JIT_DEPS` variables:
 
 ```bash
-sh tools/run255.sh 19211            # one game to level 255, then replay verification
-sh tools/run255.sh 19211 511        # rebirth: back up to level 255 on the second lap
-sh tools/run255.sh 19211 endless    # until the bot tops out or crashes
-tools/watch.cmd 500                 # watch a recorded game with an uncapped-score panel
+sh nes-bot/tools/run255.sh 19211            # one game to level 255, then replay verification
+sh nes-bot/tools/run255.sh 19211 511        # rebirth: back up to level 255 on the second lap
+sh nes-bot/tools/run255.sh 19211 endless    # until the bot tops out or crashes
+nes-bot\tools\watch.cmd 500                 # watch a recorded game with an uncapped-score panel
 ```
 
-Test changes cheaply with the crash-zone simulator `tools/zone_sim.py` (see
-[tools/README.md](tools/README.md)).
+Test changes cheaply with the crash-zone simulator `nes-bot/tools/zone_sim.py` (see
+[nes-bot/tools/README.md](nes-bot/tools/README.md)).
 
 **Tests:**
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pytest -q        # from the repository root: all three bots
 ```
 
+`pytest.ini` puts all three bot folders on the import path, so no install is needed for tests.
 Emulator-dependent tests skip when MesenCE or optional dependencies are not available.
 
-`tests/test_sim_regression.py` (needs numpy + numba) pins the simulators: seeded games, v8c
-crash-zone games, 1G reach limits and the crash model must match `tests/data/sim_golden.json`,
+`nes-bot/tests/test_sim_regression.py` (needs numpy + numba) pins the simulators: seeded games, v8c
+crash-zone games, 1G reach limits and the crash model must match `nes-bot/tests/data/sim_golden.json`,
 and survival floors must hold. After an intended behaviour change, check the floors (full
 v8c baseline: `SIM_FULL_BASELINE=1`, about 10 minutes on 4 cores), then re-record with
-`python tools/sim_golden.py --write`.
+`python nes-bot/tools/sim_golden.py --write`.
 
 ## Project layout
 
-| Path | Contents |
+Each bot has its own top-level folder with its code, tests, docs, evidence and setup files.
+
+| Folder | What it is |
 |---|---|
-| [`nes_original/`](nes_original/README.md) | Original-cartridge bot: MesenCE / nes-py adapters, Lua bridge, planner and evaluator, crash model, endurance runner, replay and verification. Tuned weights in `nes_original/weights/`. |
-| [`tools/`](tools/README.md) | `run255.sh` launcher, batch runner, crash-zone simulator, tuners, replay viewer, packaging. |
-| [`offline/`](offline/RULES.md) | Offline Sprint engine, bot controller, player/recorder, acceptance evaluator, endurance. |
-| `dqn/` | Double DQN training, candidate enumeration, lookahead, robustness and legacy SB3 scripts. |
-| [`nes/`](nes/README.md) | Earlier provisional NES simulator and learning pilot (not an emulator). |
-| `models/` | Small inference-only policy exports. |
-| `evidence/` | Retained result files, protocols and audits. |
-| `tests/` | pytest suite. |
-| [`docs/`](docs/README.md) | All documentation, indexed. |
-| `setup*.ps1`, `play*.ps1`, `evaluate.ps1`, `research-evaluate.ps1`, `requirements-*.txt` | Setup, play and evaluation entry points and pinned dependency sets. |
+| [`nes-bot/`](nes-bot/README.md) | **Current work.** The original-NES bot (level 255, score, rebirths): `nes_original/` (MesenCE adapter, planner, crash model, endurance runner, replay), `nes/` (the NES rules engine it builds on, plus the early NES learning pilot), `tools/` (launchers, batch runner, crash-zone simulator, tuners), `tests/`, `docs/`, `evidence/`. |
+| [`modern-rules/`](modern-rules/README.md) | The Offline Sprint: this project's own modern-rules game (`offline/`: 7-bag, hold, SRS, lock delay) and its bot controller, acceptance evaluator and endurance runner. |
+| [`old-dqn/`](old-dqn/README.md) | The learned bots: Double DQN board evaluator (`dqn/`), the original Stable-Baselines3 placement wrapper (`tetris_macro_env.py`), trained policies (`models/`), playback and GIF scripts. |
+| [`docs/`](docs/README.md) | Index of every document. |
 | [`progress.md`](progress.md) | Dated development log (kept at the root; some scripts update it). |
+
+**Imports.** Each bot folder is an import root (`import nes_original`, `import offline`,
+`import dqn`), and the bots share code: the modern-rules bot uses the DQN evaluator in
+`old-dqn/`. The launchers and `pytest.ini` set the path themselves. To run `python -m ...`
+commands by hand, either run once per Python environment, from the repository root:
+
+```bash
+python -m pip install -e .
+```
+
+or set `PYTHONPATH` to the folders you need (for example `PYTHONPATH=nes-bot` for the NES bot).
+Run commands from the repository root; output goes to `runs/` there.
+
+## Contributing
+
+New work follows [CONTRIBUTING.md](CONTRIBUTING.md): where files go in the folder layout,
+branch names (`<area>/<short-topic>`), one goal per PR with the
+[PR template](.github/pull_request_template.md), merge commits on GitHub, and which README
+or results file to update in the same PR.
 
 ## Limits
 
