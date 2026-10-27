@@ -7,14 +7,15 @@ delay) and the bot that plays it with timed, replay-verified inputs. Full write-
 | Path | Contents |
 |---|---|
 | `offline/` | Game engine, bot controller, player/recorder, 40-line acceptance evaluator, endurance runner. |
-| `tests/` | Tests for the game and the endurance runner. |
+| `offline/classic_bot.py`, `offline/compare_bots.py` | The NES bot's evaluator and beam search ported to this game, and a head-to-head runner against the learned bot (results in the write-up). |
+| `tests/` | Tests for the game, the endurance runner and the NES-bot port. |
 | `docs/` | The Offline Sprint write-up and the October 2026 checkpoint notes. |
 | `evidence/` | Acceptance, endurance and 100-hour endurance results. |
 | `tools/` | `package_checkpoint.py`, which packaged the 2026-10-21 checkpoint. |
 | `setup.ps1`, `play.ps1`, `evaluate.ps1`, `requirements*.txt` | The shared `.venv` (used by this folder and `old-dqn/`) and entry points. |
 
 The bot scores boards with the learned evaluator in [`../old-dqn/`](../old-dqn/README.md), so
-`old-dqn` must be on the import path too (the launchers and `pytest.ini` handle this).
+`old-dqn` must be on the import path too (the launchers and `pytest.ini` handle this). The ported NES bot (`offline/classic_bot.py`) also imports `nes_original`, so it needs `nes-bot` on the path as well (`pip install -e .` covers all three).
 
 ```powershell
 .\modern-rules\setup.ps1
