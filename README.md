@@ -34,6 +34,11 @@ Two Tetris-playing bots, each judged only by results that are replayed and verif
   model/stream cases versus **10/15** without it (censored outcomes, not averages).
 - One endurance game reached **15,464 lines** and was still alive at its wall-time cutoff
   (a single unfinished game, not an average).
+- **NES bot on modern rules (2026-10-26).** The NES bot's evaluator and beam search, ported to
+  this game (`modern-rules/offline/classic_bot.py`), also passed **20/20** of the same 40-line
+  games, input-replay verified, using fewer pieces (~101 vs ~108). On endurance, both bots were
+  still alive at a 5,000-line cap on 8 seeds and at **50,000 lines** on seed 92000. This ruleset
+  doesn't separate them on survival. Details in the write-up.
 
 ## How the NES bot works
 
