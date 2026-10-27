@@ -14,6 +14,7 @@ including retained results and how to restore models and saved games.
 - [Offline game and acceptance result](#offline-game-and-acceptance-result)
 - [Research question and findings](#research-question-and-findings)
 - [Offline endurance](#offline-endurance-optional-extension)
+- [NES-bot port and head-to-head](#nes-bot-port-and-head-to-head-optional-extension)
 - [Train and resume](#train-and-resume)
 - [Code map and limits](#code-map-and-limits)
 - [Legacy placement-DQN scripts](#legacy-placement-dqn-scripts-stable-baselines3)
@@ -199,6 +200,34 @@ trust. Previous segments are preserved and replayed in order. Use a fresh output
 directory for each segment. Creating a `STOP` file inside the current output
 directory requests a clean stop. This extension does not alter the frozen v1
 release archive or its forty-line acceptance evidence.
+
+## NES-bot port and head-to-head (optional extension)
+
+`offline/classic_bot.py` ports the NES bot's hand-weighted evaluator to this game:
+the NES Dellacherie features (`nes_original.sim.board_features`) plus a 3-piece
+beam search (beam 8) over hold and the visible preview. The executed move uses the
+same timed reachable paths and controller timing as the learned bot; deeper plies
+use a cheaper rotate-shift-drop family. No network or training is needed.
+
+```powershell
+python -m offline.compare_bots --mode sprint --seeds 91000-91019 --output runs/h2h-sprint
+python -m offline.compare_bots --mode endurance --cap-lines 5000 --seeds 92000-92007 --output runs/h2h-end
+```
+
+Results on a 4-vCPU Linux cloud machine (2026-10-26), one single-threaded game per core:
+
+| | Learned bot (seed1-100k, beam 4) | NES-bot port |
+|---|---|---|
+| 40-line sprint, seeds 91000-91019 | 20/20, all replays verified | 20/20, all replays verified |
+| Pieces / game time per sprint | ~108 / ~74 s | ~101 / ~68.6 s |
+| Endurance, seeds 92000-92007, 5,000-line cap | 8/8 alive at cap | 8/8 alive at cap |
+| Seed 92000, 50,000-line cap | alive (125,010 pieces) | alive (125,001 pieces) |
+| Planning time per move | ~28 ms | ~26 ms |
+
+Both bots also stayed alive to a 1,000-line cap with gravity 4x and 7.5x faster.
+Endurance games are checked piece by piece against the planned board (zero
+mismatches or rejected inputs) but were not input-replayed. With lock delay and
+hold, this ruleset does not separate the two bots on survival.
 
 ## Train and resume
 
