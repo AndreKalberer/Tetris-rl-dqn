@@ -1,3 +1,7 @@
+October 27, 2026 — 50M score bot
+
+New score bot `nes-bot/tools/run-score50.sh` (CEM-tuned tetris weights with a 3rd-piece expectation). Sim: 58.3M per lap, 98.5% of laps survived. Verified real games: seed 957 58,187,903 and seed 24340 55,723,090, both at level 255.
+
 October 23, 12:19 PM Denver — A recovery and controller hardening
 
 A second legal recovery is now observed natively: the entry-Down level 161 / 1,550-line cutoff was reconstructed exactly, followed by 2,400 more Down inputs without recovery, five A inputs, then 28 neutral inputs. Stable active observations returned and an additional piece was placed (3,881 total). Generation completed with original record/source hashes unchanged. This second recovery is NOT yet fully fresh-replay verified; exact proof is running separately on CPU 13/15, actual Python 25276 / Mesen 18564, launcher 26736. Output runs/nes-161-a-recovery-proof-v1. Launcher manifest outputs/nes-161-a-recovery-proof-v2-launch.json points to corrected verifier SHA256 d5088a2fe233818b90c805b244b78d99c97792c49867cc484003728b21478ff9. The first verifier launcher 16768 refused BEFORE output/core creation because reconstructed cutoff omitted the known fault annotation under a larger host watchdog. All game bytes and other metadata matched. A narrow metadata-only exception now requires every other deep value exactly; six dry rejection/validation tests passed. Preserve first refusal logs.

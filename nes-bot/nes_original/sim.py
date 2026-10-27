@@ -680,6 +680,10 @@ class TunedSelector:
             alt_w,below,alt_well,ranges = alt[:4]
             burn = None if len(alt)<5 or alt[4] is None else pad_weights(alt[4])
             self.alt = (pad_weights(alt_w),int(below),int(alt_well),tuple((int(a),int(b)) for a,b in ranges),burn)
+        # Clear sizes (bit mask by lines) banned while the low-stack tetris mode is active.
+        self.alt_ban = 0
+        self.alt_expect = None
+        self.burn_expect = None
         self.grand_states = np.zeros((MAX_CANDIDATES,9),np.int64)
         self.switched = False
         self.states = np.zeros((MAX_CANDIDATES,9),np.int64)
@@ -703,6 +707,7 @@ class TunedSelector:
         ban,expect = 0,self.expect
         push_min,push_mask = push_rule(observation.level)
         in_zone = False
+        root_ban = 0
         for lo,hi,zone_w,zone_well,zone_ban,zone_expect in self.zones:
             if lo<=observation.level<=hi:
                 w,well,ban,expect = zone_w,zone_well,zone_ban,zone_expect
@@ -714,13 +719,23 @@ class TunedSelector:
             if any(lo<=observation.level<=hi for lo,hi in ranges):
                 if stack_height(observation.board)<=below:
                     w,well = alt_w,alt_well
+                    ban = root_ban = self.alt_ban
+                    if self.alt_expect is not None:
+                        expect = self.alt_expect
                     self.modes['alt'] += 1
                 elif burn is not None:
                     w,well = burn,-1
+                    if self.burn_expect is not None:
+                        expect = self.burn_expect
                     self.modes['burn'] = self.modes.get('burn',0)+1
         actions = plan.actions
         rows = action_features(observation,plan,well)
         values = rows@w
+        if root_ban:
+            banned = (root_ban>>np.asarray(actions.lines,dtype=np.int64))&1==1
+            values[banned] += BANNED
+        else:
+            banned = None
         values[np.asarray(actions.terminal,dtype=bool)] = DEAD
         if self.beam<=0:
             return values
@@ -756,6 +771,8 @@ class TunedSelector:
                     well,w,self.scratch,self.states,ban,push_min,push_mask)
             # Expanded proposals rank by two-ply value, kept above unexpanded ones.
             result[i] = 1.e6+placement[i]+child if child>DEAD else DEAD/2
+            if banned is not None and banned[i]:
+                result[i] += BANNED
         return result
 
     def __call__(self,observation,plan):
@@ -800,6 +817,9 @@ def tuned_selector(weights='score_start',*,beam=3,expect=0,zone_weights=None,zon
         burn = data.get('burn_weights')
         selector.alt = (pad_weights(data['alt_weights']),int(data['alt_below']),int(data.get('alt_well',9)),
                         tuple((int(a),int(b)) for a,b in levels),None if burn is None else pad_weights(burn))
+        selector.alt_ban = int(data.get('alt_ban',0))
+        selector.alt_expect = data.get('alt_expect')
+        selector.burn_expect = data.get('burn_expect')
         selector.alt_source = str(alt_weights)
     if zone_weights:
         import json
