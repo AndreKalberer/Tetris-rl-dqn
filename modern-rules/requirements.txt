@@ -1,5 +1,8 @@
 gymnasium==1.2.3
 numpy==2.2.6
+# The ported NES bot (offline/classic_bot.py) reuses the NES bot's numba feature code
+numba==0.68.0
+llvmlite==0.50.0
 stable-baselines3==2.9.0
 tensorboard==2.21.0
 opencv-python==4.13.0.90
