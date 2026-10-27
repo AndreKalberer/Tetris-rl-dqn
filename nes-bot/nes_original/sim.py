@@ -28,8 +28,8 @@ FEATURES = BOARD_FEATURES+PLACEMENT_FEATURES+REACH_FEATURES
 N_REACH0 = len(BOARD_FEATURES)+len(PLACEMENT_FEATURES)
 # Highest column a piece can pass over at 30 Hz, level 29+ (fast simulator, measured):
 # a flat T/J/L/O tapped to the left wall, and a vertical I/O tapped to column 9.
-LEFT_LIMIT = np.asarray((7,7,7,8,10,12,14,20,20,20),dtype=np.int64)
-RIGHT_LIMIT = np.asarray((20,20,20,20,13,11,9,7,7,7),dtype=np.int64)
+LEFT_LIMIT = np.asarray((10,10,10,11,13,15,17,20,20,20),dtype=np.int64)
+RIGHT_LIMIT = np.asarray((20,20,20,20,16,14,12,10,10,10),dtype=np.int64)
 SCARE_HEIGHT = 4.
 # Default frames the controller waits after spawn before its first input (v8c: 3). Every
 # enumeration takes the wait as an explicit `reaction` argument; this is only the default.
