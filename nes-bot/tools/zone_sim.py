@@ -56,13 +56,13 @@ _SELECTORS = {}
 
 def _selector(config):
     key = json.dumps({k: config.get(k) for k in ('beam', 'zone_weights', 'zone_levels', 'zone_ban', 'zone_expect',
-                                                 'extra_zones', 'reaction', 'alt_weights', 'alt_levels')},
+                                                 'extra_zones', 'reaction', 'alt_weights', 'alt_levels', 'playout')},
                      sort_keys=True, default=str)
     if key not in _SELECTORS:
         _SELECTORS[key] = sim.tuned_selector('dellacherie', beam=config['beam'], zone_weights=config['zone_weights'],
             zone_levels=tuple(config['zone_levels']), zone_ban=config['zone_ban'], zone_expect=config['zone_expect'],
             extra_zones=[tuple(z) for z in config['extra_zones']], reaction=config.get('reaction', 3),
-            alt_weights=config.get('alt_weights'), alt_levels=config.get('alt_levels'))
+            alt_weights=config.get('alt_weights'), alt_levels=config.get('alt_levels'), **(config.get('playout') or {}))
     return _SELECTORS[key]
 
 
@@ -214,6 +214,11 @@ def main():
     p.add_argument('--alt-weights', help='low-stack tetris weights.json used outside the zones')
     p.add_argument('--alt-levels', type=int, nargs='+', help='level ranges for the tetris weights: lo hi lo hi ...')
     p.add_argument('--stop-lines', type=int, help='play a whole game from level 18 to this absolute line count')
+    p.add_argument('--playout-top', type=int, default=0,
+                   help='StackRabbit-style playouts in the tetris/burn modes: pairs played out (0 = off, beam/expect)')
+    p.add_argument('--playout-cap', type=int, default=4, help='max played-out pairs per current-piece placement')
+    p.add_argument('--playout-length', type=int, default=2, help='unknown pieces per playout (7**N sequences)')
+    p.add_argument('--playout-death', type=float, default=-1000., help='value of a playout that tops out')
     p.add_argument('--output', type=Path)
     args = p.parse_args()
     extra = args.extra_zone if args.extra_zone is not None else [[str(REPO/'runs/lowstack-246-249.json'), '246', '249']]
@@ -225,7 +230,10 @@ def main():
                   if args.budget else None,
                   reaction=args.reaction, alt_weights=args.alt_weights,
                   alt_levels=[(args.alt_levels[i], args.alt_levels[i+1]) for i in range(0, len(args.alt_levels), 2)]
-                  if args.alt_levels else None, stop_lines=args.stop_lines)
+                  if args.alt_levels else None, stop_lines=args.stop_lines,
+                  playout=dict(playout_top=args.playout_top, playout_cap=args.playout_cap,
+                               playout_length=args.playout_length, playout_death=args.playout_death)
+                  if args.playout_top else None)
     if args.start_board:
         data = json.loads(args.start_board.read_text())
         rows = data['rows'] if isinstance(data, dict) else data
