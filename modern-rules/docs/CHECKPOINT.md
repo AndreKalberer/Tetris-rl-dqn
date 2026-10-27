@@ -39,9 +39,9 @@ included. The earlier frozen Offline Sprint v1 ZIP remains unchanged.
 Extract the new checkpoint ZIP, enter its project directory, then:
 
 ```powershell
-.\setup.ps1
-.\play.ps1
-.\evaluate.ps1
+.\modern-rules\setup.ps1
+.\modern-rules\play.ps1
+.\modern-rules\evaluate.ps1
 ```
 
 Verify the retained endurance game or continue the exact saved position:
@@ -63,7 +63,7 @@ Continue training toward an absolute total of 120k placements:
 ```
 
 Full training checkpoints retain replay, optimizer, RNG and game state. The
-five small `models/*.pt` files are inference-only exports.
+five small `old-dqn/models/*.pt` files are inference-only exports.
 
 Restore Git history separately after extracting `repository.bundle`:
 

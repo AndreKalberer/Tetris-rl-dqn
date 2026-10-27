@@ -16,7 +16,7 @@ def main():
     expected={(seed,beam) for seed in protocol['evaluation_seeds'] for beam in protocol['beams']}
     source_hashes={name.replace('\\','/'):digest for name,digest in protocol['source_sha256'].items()}
     for source in ['tetris_macro_env.py','dqn/candidates.py','dqn/lookahead.py','dqn/train_candidates.py','dqn/robust_train.py']:
-        assert hashlib.sha256(Path(source).read_bytes()).hexdigest()==source_hashes[source], source
+        assert hashlib.sha256((Path(__file__).resolve().parents[1]/source).read_bytes()).hexdigest()==source_hashes[source], source
     models=[]
     for name in protocol['models']:
         origin=scheduling['selected_origins'][name]

@@ -5,7 +5,7 @@ reach level30 (240lines). First establish a replay-verified development success;
 then retain the larger reliability/score/three-training-seed acceptance study.
 
 ```powershell
-.\setup-nes-original.ps1 -Learning
+.\nes-bot\setup-nes-original.ps1 -Learning
 .\.venv-original\Scripts\python.exe -m nes_original.learn --output runs/original-training --status runs/original-training/live.json --seeds 0 1 2 --steps 10000
 ```
 

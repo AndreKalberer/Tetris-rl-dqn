@@ -28,27 +28,27 @@ sandbox is also included, and its scores are kept separate.
 From the extracted project directory:
 
 ```powershell
-.\setup.ps1
-.\play.ps1
+.\modern-rules\setup.ps1
+.\modern-rules\play.ps1
 ```
 
 Setup creates `.venv`, installs pinned CPU dependencies, and runs the tests. The
 release includes trained weights; training is not required to watch or play.
 Installation needs package downloads once; gameplay runs offline afterward.
-The tested full dependency lock is `requirements-lock-cpu-windows.txt`.
+The tested full dependency lock is `modern-rules/requirements-lock-cpu-windows.txt`.
 
 Human play and reproducible evaluation:
 
 ```powershell
-.\play.ps1 -Human
-.\evaluate.ps1
+.\modern-rules\play.ps1 -Human
+.\modern-rules\evaluate.ps1
 ```
 
 If scripts are restricted in your environment, the equivalent commands are:
 
 ```powershell
 py -3.13 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pip install -r modern-rules/requirements-dev.txt
 .\.venv\Scripts\python.exe -m offline.play
 .\.venv\Scripts\python.exe -m offline.play --human
 .\.venv\Scripts\python.exe -m pytest -q
@@ -97,11 +97,11 @@ Record a complete offline game without opening a window:
 python -m offline.play --seed 1001 --record runs/offline-demo.mp4 --screenshot runs/offline-final.png
 ```
 
-The default learned model is `models/seed1-100000.pt`. Choose another retained
+The default learned model is `old-dqn/models/seed1-100000.pt`. Choose another retained
 model or disable extra lookahead with:
 
 ```powershell
-python -m offline.play --checkpoint models/seed2-60000.pt --beam 1
+python -m offline.play --checkpoint old-dqn/models/seed2-60000.pt --beam 1
 ```
 
 ## Research question and findings
@@ -142,20 +142,20 @@ runtime guarantee. Concurrent benchmark jobs also affect wall-time measurements.
 Reproduce the three matched-budget model comparisons:
 
 ```powershell
-.\research-evaluate.ps1
+.\old-dqn\research-evaluate.ps1
 ```
 
 Or run an individual research comparison:
 
 ```powershell
-python -m dqn.benchmark_lookahead --checkpoint models/seed1-60000.pt --seeds 70000 70001 70002 70003 70004 --cap 5000 --beams 1 4 --output runs/research-repeat
+python -m dqn.benchmark_lookahead --checkpoint old-dqn/models/seed1-60000.pt --seeds 70000 70001 70002 70003 70004 --cap 5000 --beams 1 4 --output runs/research-repeat
 ```
 
 An explicit research line-goal evaluator distinguishes a passed line goal,
 natural loss, and inconclusive resource limit:
 
 ```powershell
-python -m dqn.line_challenge --checkpoint models/seed1-100000.pt --seed 80003 --target-lines 10000 --output runs/line-goal
+python -m dqn.line_challenge --checkpoint old-dqn/models/seed1-100000.pt --seed 80003 --target-lines 10000 --output runs/line-goal
 ```
 
 The earlier three 10k-line development trials were inconclusive after a large
@@ -218,8 +218,8 @@ choices through timed reachable paths; it is not a newly trained frame-level
 agent. Future estimates inside two-ply search remain approximate, while each
 executed first-placement path is checked against the offline engine.
 
-Legacy SB3 scripts remain under `dqn/`: `train_dqn_server.py`, `eval_lines.py`,
-`diagnose_policy_dqn.py`, and `enjoy_local_dqn.py`. `play_bot.py` and `record_gif.py`
+Legacy SB3 scripts remain under `old-dqn/dqn/`: `train_dqn_server.py`, `eval_lines.py`,
+`diagnose_policy_dqn.py`, and `enjoy_local_dqn.py`. `old-dqn/play_bot.py` and `old-dqn/record_gif.py`
 load legacy `.zip` models. Corrected observations and real next-5 input can change
 old-checkpoint behavior. Metadata/replay checks guard resume; an explicitly chosen
 `--allow-legacy-resume` is a warm start, not exact historical reproduction.
@@ -244,7 +244,7 @@ and world-record strength are outside v1. No cloud service is required at runtim
 ## Legacy placement-DQN scripts (Stable-Baselines3)
 
 Before the current trainer, the project used Stable-Baselines3 DQN with a **macro-action**
-wrapper (`tetris_macro_env.py`): one decision per placed piece — rotation, column and
+wrapper (`old-dqn/tetris_macro_env.py`): one decision per placed piece — rotation, column and
 optionally hold — instead of learning dozens of frame-level inputs. That keeps credit
 assignment short (one step = one placement) at the cost of not modelling timing-dependent
 moves such as tucks and spins.
@@ -252,14 +252,14 @@ moves such as tucks and spins.
 The legacy `.zip` checkpoints are not included in the repository (`*.zip` is git-ignored),
 so the old reported scores (for example 75.3 lines per episode) cannot be reproduced from
 this repository and are historical, not controlled benchmarks. The GIF in
-[`assets/tetris_bot.gif`](../assets/tetris_bot.gif) is an illustrative playback, not an
+[`old-dqn/assets/tetris_bot.gif`](../../old-dqn/assets/tetris_bot.gif) is an illustrative playback, not an
 evaluation sample.
 
 To evaluate a legacy checkpoint you have, name it explicitly rather than relying on the
-newest file in `models/`, and match the observation settings to its training run:
+newest file in `models/` (relative to where you run it), and match the observation settings to its training run:
 
 ```powershell
-python dqn/diagnose_policy_dqn.py --model-path models/YOUR_CHECKPOINT.zip --obs board --hold-actions --next-n 1 --reward-profile tetris --n-steps 20000 --seed 42 --summary
+python old-dqn/dqn/diagnose_policy_dqn.py --model-path models/YOUR_CHECKPOINT.zip --obs board --hold-actions --next-n 1 --reward-profile tetris --n-steps 20000 --seed 42 --summary
 ```
 
 The diagnostic uses deterministic predictions and resets successive episodes with

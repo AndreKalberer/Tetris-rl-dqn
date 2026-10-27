@@ -215,7 +215,7 @@ def verify(reference,cases,output):
     result=dict(reference_revision=REVISION,reference_sha256=HASHES,cpu='py65 1.2.0 NMOS 6502 (decimal flag clear)',
         orientation_tables_verified=19,rotation_spawn_gravity_tables_verified=True,
         randomizer_cases=cases,active_control_cases=cases,case_seed=73021,
-        engine_sha256=hashlib.sha256(Path('nes/engine.py').read_bytes()).hexdigest(),
+        engine_sha256=hashlib.sha256((Path(__file__).resolve().parents[1]/'nes/engine.py').read_bytes()).hexdigest(),
         verifier_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         scope='Source-level routine comparisons only. Whole-ROM, frame scheduler, PPU/audio timing, top-boundary memory and late-game glitches remain unvalidated.')
     output.parent.mkdir(parents=True,exist_ok=True)

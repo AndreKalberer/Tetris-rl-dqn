@@ -1,5 +1,5 @@
 param(
-    [string]$EnvironmentPath = (Join-Path $PSScriptRoot '.venv-original'),
+    [string]$EnvironmentPath = (Join-Path (Split-Path -Parent $PSScriptRoot) '.venv-original'),
     [switch]$Learning,
     [switch]$SkipTests
 )
@@ -10,7 +10,7 @@ if (-not (Test-Path -LiteralPath $tetrisPython)) {
     & py -3.13 -m venv --without-pip $EnvironmentPath
     if ($LASTEXITCODE -ne 0) { throw 'Could not create isolated Python 3.13 environment' }
 }
-$tetrisBootstrap = Join-Path $PSScriptRoot '.venv/Scripts/python.exe'
+$tetrisBootstrap = Join-Path (Split-Path -Parent $PSScriptRoot) '.venv/Scripts/python.exe'
 $tetrisRequirements = Join-Path $PSScriptRoot $(if ($Learning) { 'requirements-nes-original-training.txt' } else { 'requirements-nes-original-lock-windows.txt' })
 if (Test-Path -LiteralPath $tetrisBootstrap) {
     & $tetrisBootstrap -m pip --python $tetrisPython install pip==26.2.2 -r $tetrisRequirements

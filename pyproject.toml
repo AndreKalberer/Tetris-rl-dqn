@@ -1,0 +1,25 @@
+# Optional: `pip install -e .` once per Python environment makes the bot packages importable
+# from any folder, so commands such as `python -m nes_original.endurance` keep working.
+# Without it, run from the repository root with PYTHONPATH set (the launchers do this).
+# No dependencies are listed here; install them from each bot's requirements files.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tetris-bots"
+version = "0.0.0"
+description = "Tetris bots: original NES Tetris (nes-bot), modern rules (modern-rules), learned DQN (old-dqn)"
+requires-python = ">=3.13"
+
+[tool.setuptools]
+py-modules = ["tetris_macro_env"]
+packages = ["nes", "nes_original", "offline", "dqn"]
+include-package-data = false
+
+[tool.setuptools.package-dir]
+"" = "old-dqn"
+nes = "nes-bot/nes"
+nes_original = "nes-bot/nes_original"
+offline = "modern-rules/offline"
+dqn = "old-dqn/dqn"

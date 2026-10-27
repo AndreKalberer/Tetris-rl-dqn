@@ -7,13 +7,14 @@ import subprocess
 import zipfile
 
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[1]  # nes-bot/
+REPO=ROOT.parent
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--artifacts-dir',type=Path,default=ROOT.parents[1]/'outputs')
+    parser.add_argument('--artifacts-dir',type=Path,default=REPO.parents[1]/'outputs')
     args=parser.parse_args()
     files={str(path.relative_to(ROOT)).replace('\\','/'):path for path in (ROOT/'nes').glob('*') if path.is_file()}
     files['README.md']=ROOT/'nes/README.md'
@@ -21,11 +22,11 @@ def main():
     for name in ('tests/test_nes.py','pytest.ini','requirements-nes.txt','requirements-nes-dev.txt',
                  'requirements-nes-validation.txt','setup-nes.ps1','play-nes.ps1','LICENSE',
                  'tools/verify_nes_reference.py','tools/package_nes.py','progress.md'):
-        files[name]=ROOT/name
+        files[name]=(REPO if name in ('pytest.ini','LICENSE','progress.md') else ROOT)/name
     for path in (ROOT/'evidence/nes-v1').glob('*.json'):
         files['evidence/'+path.name]=path
-    for path in (ROOT/'runs/nes-dev-v2').rglob('*.json'):
-        files['evidence/probes/'+str(path.relative_to(ROOT/'runs/nes-dev-v2')).replace('\\','/')]=path
+    for path in (REPO/'runs/nes-dev-v2').rglob('*.json'):
+        files['evidence/probes/'+str(path.relative_to(REPO/'runs/nes-dev-v2')).replace('\\','/')]=path
     for name in ('nes-engine-demo.mp4','nes-engine.png'):
         files['demo/'+name]=args.artifacts_dir/name
     manifest={name:dict(bytes=path.stat().st_size,sha256=hashlib.sha256(path.read_bytes()).hexdigest())

@@ -40,7 +40,7 @@ def main():
         selection='Highest mean observed lines on six fixed-logical-reaction validation cases only; CPU jitter does not change validation trajectories; all candidates retained',
         latency='Three-frame minimum reaction; late plans discarded, their full elapsed frames charged as idle, then replan',
         policies=[dict(path=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest()) for path in args.policies],
-        source_sha256={name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in
+        source_sha256={name:hashlib.sha256((Path(__file__).resolve().parents[1]/name).read_bytes()).hexdigest() for name in
             ('nes/engine.py','nes/actions.py','nes/agent.py','nes/benchmark_learning.py')},
         scope='One training seed, provisional NES simulator, no ROM/human/world-record comparison')
     write_json(args.output/'protocol.json',protocol)

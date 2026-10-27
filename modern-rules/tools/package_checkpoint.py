@@ -9,7 +9,7 @@ import tarfile
 import zipfile
 
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]  # repository root (runs/ lives here)
 PREFIX='Tetris-rl-dqn-checkpoint/'
 
 

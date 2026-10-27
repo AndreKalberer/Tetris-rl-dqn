@@ -22,7 +22,7 @@ from offline.evaluate import board_hash,checkpoint_default
 
 def report(output,status):
     write_json(output/'status.json',status)
-    root=Path(__file__).resolve().parents[1]
+    root=Path(__file__).resolve().parents[2]  # repository root
     task=root.parents[1]
     if (task/'outputs/progress.md').exists():
         p=task/'outputs/progress.md'
@@ -71,7 +71,7 @@ def run(checkpoint,seed,beam,wall_seconds,output,resume=None):
         policy_sha256=hashlib.sha256(Path(checkpoint).read_bytes()).hexdigest(),
         wall_budget_seconds=wall_seconds,parent_segment=parent,starting_frame=game.frames,
         line_limit=None,placement_limit=None,simulation_frame_limit=None,
-        source_sha256={name:hashlib.sha256(Path(name).read_bytes()).hexdigest()
+        source_sha256={name:hashlib.sha256((Path(__file__).resolve().parents[1]/name).read_bytes()).hexdigest()
             for name in ['offline/engine.py','offline/bot.py','offline/endurance.py']},
         scope='One preselected piece sequence; natural top-out measures this game, not average strength')
     write_json(output/'protocol.json',protocol)

@@ -4,7 +4,7 @@ Survival play (Dellacherie) handles every other position. Fitness is uncapped
 points per line minus a heavy cost per top-out (a top-out ends a level-255
 attempt). Simulation only (nes_original.sim): confirm in the original game.
 
-  python tools/tune_low_stack_tetris.py --output runs/tune-lowstack-v1
+  python nes-bot/tools/tune_low_stack_tetris.py --output runs/tune-lowstack-v1
 """
 import argparse
 import json
@@ -15,7 +15,8 @@ import time
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]  # nes-bot/
+REPO = ROOT.parent  # repository root: runs/ and progress.md live here
 sys.path.insert(0, str(ROOT))
 from nes_original import sim  # noqa: E402
 
@@ -42,7 +43,7 @@ def fitness(rows, death_cost):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--start', type=Path, default=ROOT/'runs/tune-score-v1/weights.json')
+    p.add_argument('--start', type=Path, default=REPO/'runs/tune-score-v1/weights.json')
     p.add_argument('--below', type=int, default=4, help='use the tetris weights while the stack is at most this many rows')
     p.add_argument('--expect', type=int, default=0)
     p.add_argument('--generations', type=int, default=20)

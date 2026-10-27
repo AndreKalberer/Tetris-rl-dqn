@@ -7,11 +7,11 @@ This branch adds a separate, provisional Nintendo NTSC A-Type engine. See
 From the project root with the existing environment:
 
 ```powershell
-.\play-nes.ps1
-.\play-nes.ps1 -Bot -StartLevel 18
+.\nes-bot\play-nes.ps1
+.\nes-bot\play-nes.ps1 -Bot -StartLevel 18
 ```
 
-For a fresh checkout or the standalone engine ZIP, run `.\setup-nes.ps1` first.
+For a fresh checkout or the standalone engine ZIP, run `.\nes-bot\setup-nes.ps1` first.
 It installs the small NES-specific requirements and tests, without PyTorch or
 the modern training environment. Python 3.13 is the tested interpreter.
 
@@ -29,8 +29,8 @@ untrained probe, Esc quits. The display shows score, lines, level and current
 gravity. No ROM, hold or hard drop is included. An experimental NES-specific
 learned policy is available separately; see [TRAINING.md](TRAINING.md).
 
-Watch it with `.\play-nes.ps1 -Checkpoint models/nes-seed0-best.pt -StartLevel 18`
-after installing the full CPU dependencies with setup.ps1.
+Watch it with `.\nes-bot\play-nes.ps1 -Checkpoint nes-bot/models/nes-seed0-best.pt -StartLevel 18`
+after installing the full CPU dependencies with modern-rules/setup.ps1.
 
 Run a small probe suite (choose a new output folder each time):
 
@@ -53,8 +53,8 @@ No checkpoint loading with pickle is needed for this new engine.
 Optional developer validation uses py65 separately from the normal runtime:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-nes-validation.txt
-.\.venv\Scripts\python.exe tools/verify_nes_reference.py --reference-dir PATH_TO_REFERENCE --cases 3000 --output runs/nes-reference-check.json
+.\.venv\Scripts\python.exe -m pip install -r nes-bot/requirements-nes-validation.txt
+.\.venv\Scripts\python.exe nes-bot/tools/verify_nes_reference.py --reference-dir PATH_TO_REFERENCE --cases 3000 --output runs/nes-reference-check.json
 ```
 
 Supply `main.asm` and `constants.asm` from the pinned public disassembly revision

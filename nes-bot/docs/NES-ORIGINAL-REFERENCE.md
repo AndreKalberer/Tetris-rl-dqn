@@ -21,7 +21,7 @@ RAM and CPU/PPU clocks are kept outside the policy interface.
 ## Setup
 
 Use an isolated CPython3.13 Windows environment. Install
-`requirements-nes-search.txt` there; do not modify a running worker's environment.
+`nes-bot/requirements-nes-search.txt` there; do not modify a running worker's environment.
 The optional compiled planner is an approximate feature generator, not an emulator.
 
 Use a dedicated portable [official MesenCE2.2.1 build](https://github.com/nesdev-org/MesenCE/releases/tag/2.2.1).

@@ -20,11 +20,14 @@ logs/
 *.pt.tmp
 
 # Small, retained inference policies belong to the source checkpoint.
-!models/seed0-60000.pt
-!models/seed1-60000.pt
-!models/seed1-100000.pt
-!models/seed2-60000.pt
-!models/seed2-100000.pt
-!models/nes-seed0-best.pt
-!models/nes-seed0-imitation.pt
+!old-dqn/models/seed0-60000.pt
+!old-dqn/models/seed1-60000.pt
+!old-dqn/models/seed1-100000.pt
+!old-dqn/models/seed2-60000.pt
+!old-dqn/models/seed2-100000.pt
+!nes-bot/models/nes-seed0-best.pt
+!nes-bot/models/nes-seed0-imitation.pt
 .numba-cache/
+
+# pip install -e . metadata
+*.egg-info/

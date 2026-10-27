@@ -6,7 +6,7 @@ Two kinds of checks:
   recorded in tests/data/sim_golden.json for the current spawn reaction wait. Any change
   to piece movement, the evaluator, the randomizer or the crash model shows up here.
   After an intended change, check the survival tests below, then re-record with
-  `python tools/sim_golden.py --write`.
+  `python nes-bot/tools/sim_golden.py --write`.
 * Survival: invariants and pass-rate floors that must hold across intended changes too
   (faster reaction may only widen reach; 1G Dellacherie play stays alive; the v8c bot
   keeps its crash-zone pass rate). The full 1,000-game v8c baseline is slow and runs only
@@ -58,7 +58,7 @@ class RecordedOutcomeTest(unittest.TestCase):
     def recorded(self, part):
         if not self.data or part not in self.data:
             self.fail(f'No recorded {part} for {self.key}. If the change is intended and the survival tests pass, '
-                      'run: python tools/sim_golden.py --write')
+                      'run: python nes-bot/tools/sim_golden.py --write')
         return self.data[part]
 
     def test_seeded_games_match_recording(self):

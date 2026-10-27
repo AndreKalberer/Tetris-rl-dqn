@@ -11,8 +11,8 @@ is below 2. Actual pushdown = predicted minus 0 or 1 (measured on 199 real locks
 
 Simulation only: piece sequences and timing between pieces are approximate.
 
-  python tools/zone_sim.py --zone early --games 400 --output runs/zone-early-v6.json
-  python tools/zone_sim.py --zone late  --games 400 --output runs/zone-late-v6.json
+  python nes-bot/tools/zone_sim.py --zone early --games 400 --output runs/zone-early-v6.json
+  python nes-bot/tools/zone_sim.py --zone late  --games 400 --output runs/zone-late-v6.json
 """
 import argparse
 import json
@@ -23,7 +23,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]  # nes-bot/
+REPO = ROOT.parent  # repository root: runs/ and progress.md live here
 sys.path.insert(0, str(ROOT))
 from nes.engine import SPAWN, TYPE  # noqa: E402
 from nes_original import sim  # noqa: E402
@@ -183,7 +184,7 @@ def main():
     p.add_argument('--games', type=int, default=200)
     p.add_argument('--seed-base', type=int, default=0)
     p.add_argument('--workers', type=int, default=4)
-    p.add_argument('--zone-weights', default=str(ROOT/'runs/tune-nosingles-v2/weights.json'))
+    p.add_argument('--zone-weights', default=str(REPO/'runs/tune-nosingles-v2/weights.json'))
     p.add_argument('--zone-levels', type=int, nargs=2, default=(156, 158))
     p.add_argument('--zone-ban', type=int, default=2)
     p.add_argument('--zone-expect', type=int, default=2)
@@ -205,7 +206,7 @@ def main():
     p.add_argument('--stop-lines', type=int, help='play a whole game from level 18 to this absolute line count')
     p.add_argument('--output', type=Path)
     args = p.parse_args()
-    extra = args.extra_zone if args.extra_zone is not None else [[str(ROOT/'runs/lowstack-246-249.json'), '246', '249']]
+    extra = args.extra_zone if args.extra_zone is not None else [[str(REPO/'runs/lowstack-246-249.json'), '246', '249']]
     config = dict(beam=args.beam, zone_weights=args.zone_weights or None, zone_levels=args.zone_levels,
                   zone_ban=args.zone_ban, zone_expect=args.zone_expect,
                   extra_zones=[tuple(z) for z in extra],

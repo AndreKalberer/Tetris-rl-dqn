@@ -3,13 +3,13 @@ from offline import endurance
 
 def test_progress_reporting_preserves_unicode_and_history(tmp_path,monkeypatch):
     root=tmp_path/'work/repo'
-    (root/'offline').mkdir(parents=True)
+    (root/'modern-rules/offline').mkdir(parents=True)
     (tmp_path/'outputs').mkdir()
     output=root/'runs/endurance'
     output.mkdir(parents=True)
     progress=tmp_path/'outputs/progress.md'
     progress.write_text('Goal: Tetris — progress\n\nActive work: starting\n\nHistory: 20/20 ✓\n',encoding='utf-8')
-    monkeypatch.setattr(endurance,'__file__',str(root/'offline/endurance.py'))
+    monkeypatch.setattr(endurance,'__file__',str(root/'modern-rules/offline/endurance.py'))
     status=dict(state='running',seed=1,placements=10,lines=4,wall_seconds=1,wall_budget_seconds=10)
     for _ in range(30):
         endurance.report(output,status)

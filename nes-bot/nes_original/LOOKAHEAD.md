@@ -25,7 +25,7 @@ discarded and elapsed frames are charged as idle before replanning.
 
 ```powershell
 # Existing original-game environment plus optional CPU dependencies:
-.\.venv-original\Scripts\python.exe -m pip install -r requirements-nes-lookahead.txt
+.\.venv-original\Scripts\python.exe -m pip install -r nes-bot/requirements-nes-lookahead.txt
 .\.venv-original\Scripts\python.exe -m nes_original.lookahead --tap-period 2 --beam 34 --jit --seeds 17 33 --output runs/new-development
 ```
 
@@ -34,7 +34,7 @@ scratch target `../nes-lookahead-deps`, without altering the worker environment.
 Pass `--jit-deps ../nes-lookahead-deps` in that arrangement.
 
 Five paired DEVELOPMENT settings were tried on menu waits17/33. Retained raw
-results are in `evidence/nes-level29`: held one-ply103/44lines, held beam3
+results are in `nes-bot/evidence/nes-level29`: held one-ply103/44lines, held beam3
 lookahead69/130, tap one-ply230/175, tap full lookahead240/212, and tap full
 lookahead with squared line reward78/240. There are failures in every setting;
 this does not establish18/20 reliability or a reliable score increase. Different

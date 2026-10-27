@@ -68,7 +68,7 @@ def write_json(path,data):
 
 
 def publish_progress(status):
-    root=Path(__file__).resolve().parents[1]
+    root=Path(__file__).resolve().parents[2]  # repository root
     task=root.parents[1]
     output=task/'outputs/progress.md'
     if not output.exists(): return
@@ -312,7 +312,7 @@ def main():
         action_scope='Bounded held-DAS navigation programs; three-frame reaction; no RNG access or pose setters',
         reward='0.1 + lines^2 - 10*death - 0.05*delta aggregate height - 0.3*delta holes - 0.02*delta bumpiness',
         scope='First single-training-seed NES pilot on provisional simulator, not a historical or original-ROM strength claim',
-        source_sha256={name:hashlib.sha256(Path(name).read_bytes()).hexdigest() for name in ('nes/engine.py','nes/actions.py','nes/learn.py')})
+        source_sha256={name:hashlib.sha256((Path(__file__).resolve().parents[1]/name).read_bytes()).hexdigest() for name in ('nes/engine.py','nes/actions.py','nes/learn.py')})
     write_json(args.output/'protocol.json',protocol)
     started=time.perf_counter()
     def status(phase,count=None):

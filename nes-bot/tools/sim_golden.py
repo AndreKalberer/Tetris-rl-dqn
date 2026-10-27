@@ -5,7 +5,7 @@ are deterministic per seed, so a fixed set of seeded games, crash-zone runs and
 reachability limits pins their behaviour. An intended behaviour change (for example
 a shorter spawn reaction wait) must re-record the values with
 
-  python tools/sim_golden.py --write
+  python nes-bot/tools/sim_golden.py --write
 
 after the survival checks in the same test file still pass. Values are stored per
 reaction wait (frames from spawn before the first input), so goldens for several
@@ -20,7 +20,8 @@ import sys
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]  # nes-bot/
+REPO = ROOT.parent  # repository root: runs/ and progress.md live here
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT/'tools'))
 if 'NUMBA_CACHE_DIR' not in os.environ:
@@ -28,7 +29,7 @@ if 'NUMBA_CACHE_DIR' not in os.environ:
     _digest = hashlib.sha1()
     for _path in sorted((ROOT/'nes').glob('*.py'))+sorted((ROOT/'nes_original').glob('*.py')):
         _digest.update(_path.name.encode()+_path.read_bytes())
-    os.environ['NUMBA_CACHE_DIR'] = str(ROOT/'.numba-cache'/_digest.hexdigest()[:16])
+    os.environ['NUMBA_CACHE_DIR'] = str(REPO/'.numba-cache'/_digest.hexdigest()[:16])
 from nes_original import sim  # noqa: E402
 
 GOLDEN = ROOT/'tests'/'data'/'sim_golden.json'

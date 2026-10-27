@@ -18,7 +18,7 @@ late-game crashes; do not treat that core as certified for255/rebirth.
 On Windows with CPython 3.13 and a working bootstrap pip:
 
 ```powershell
-.\setup-nes-original.ps1
+.\nes-bot\setup-nes-original.ps1
 .\.venv-original\Scripts\python.exe -m nes_original.run --level 18 --seed 17 --output runs/original-probe
 .\.venv-original\Scripts\python.exe -m nes_original.replay runs/original-probe/replay.json
 ```
@@ -27,7 +27,7 @@ Setup creates a separate `.venv-original`; it does not change `.venv` or any
 running bot. If desired, pass `-EnvironmentPath` to reuse another isolated
 environment. The installation used during development is outside the repository
 at `../nes-original-env/.venv`. The full tested dependency versions are pinned
-in `requirements-nes-original-lock-windows.txt`. No separate ROM download is
+in `nes-bot/requirements-nes-original-lock-windows.txt`. No separate ROM download is
 needed for the verified installed package. No game image is committed here.
 
 The run is headless. To export its first 1,800 original RGB frames as an H.264
@@ -112,4 +112,4 @@ Three-seed learning and level-29/500k acceptance results are still pending.
 Upstream sources: https://github.com/Kautenja/nes-py and
 https://github.com/Kautenja/gym-tetris. Inspected wheel hashes, smoke findings,
 the failed strict-timing probe and corrected original-game trace are retained in
-`evidence/nes-original/`. Prior negative simulator results remain unchanged.
+`nes-bot/evidence/nes-original/`. Prior negative simulator results remain unchanged.

@@ -13,7 +13,7 @@ from offline.bot import Bot
 
 
 def checkpoint_default():
-    packaged=Path('models/seed1-100000.pt')
+    packaged=Path(__file__).resolve().parents[2]/'old-dqn/models/seed1-100000.pt'
     return packaged if packaged.exists() else Path('runs/robustness-v1/seed1/policy-100000.pt')
 
 
@@ -97,7 +97,7 @@ def main():
         parser.error('Choose a new output directory to preserve evidence')
     write_json(args.output/'protocol.json',dict(rules=asdict(rules),seeds=args.seeds,beam=args.beam,
         checkpoint=str(checkpoint),policy_sha256=hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
-        source_sha256={name:hashlib.sha256(Path(name).read_bytes()).hexdigest()
+        source_sha256={name:hashlib.sha256((Path(__file__).resolve().parents[1]/name).read_bytes()).hexdigest()
             for name in ['offline/engine.py','offline/bot.py','offline/evaluate.py','offline/RULES.md']},
         max_seconds=args.max_seconds,required_successes='18 of 20 in the reserved acceptance set'))
     rows=[]

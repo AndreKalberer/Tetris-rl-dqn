@@ -4,7 +4,7 @@ Each attempt is `sh LAUNCHER seed planner_mask emulator_mask` (an endurance.py r
 plays, then fresh-replay verifies). Slots are disjoint CPU-mask pairs; a new seed starts
 whenever a slot frees up. Progress is written to BATCH_DIR/batch-status.json.
 
-  python tools/batch255.py --launcher runs/nes-255-v7/launch.sh --dir runs/nes-255-v7-test25 --seeds 1001 1777 ...
+  python nes-bot/tools/batch255.py --launcher runs/nes-255-v7/launch.sh --dir runs/nes-255-v7-test25 --seeds 1001 1777 ...
 """
 import argparse
 from datetime import datetime, timezone

@@ -9,9 +9,10 @@ import hashlib
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent  # repository root
+NES = ROOT/'nes-bot'
 if 'NUMBA_CACHE_DIR' not in os.environ:
     digest = hashlib.sha1()
-    for path in sorted((ROOT/'nes').glob('*.py'))+sorted((ROOT/'nes_original').glob('*.py')):
+    for path in sorted((NES/'nes').glob('*.py'))+sorted((NES/'nes_original').glob('*.py')):
         digest.update(path.name.encode()+path.read_bytes())
     os.environ['NUMBA_CACHE_DIR'] = str(ROOT/'.numba-cache'/digest.hexdigest()[:16])

@@ -56,13 +56,13 @@ and consistent level-19/29 performance remain unfinished project goals.
 
 ## Watch and resume
 
-Use setup.ps1 for the full CPU learning environment. Minimal setup-nes.ps1 still
+Use modern-rules/setup.ps1 for the full CPU learning environment. Minimal nes-bot/setup-nes.ps1 still
 supports the untrained engine without PyTorch.
 
 ```powershell
-.\play-nes.ps1 -Checkpoint models/nes-seed0-best.pt -StartLevel 18
+.\nes-bot\play-nes.ps1 -Checkpoint nes-bot/models/nes-seed0-best.pt -StartLevel 18
 .\.venv\Scripts\python.exe -m nes.learn --steps 20000 --seed 1 --output runs/nes-seed1
-.\.venv\Scripts\python.exe -m nes.learn --resume runs/nes-training-v2/seed0/latest.pt --prior-policy models/nes-seed0-best.pt --steps 100000 --reserved-seeds 23029 29033 32603 --output runs/nes-continued
+.\.venv\Scripts\python.exe -m nes.learn --resume runs/nes-training-v2/seed0/latest.pt --prior-policy nes-bot/models/nes-seed0-best.pt --steps 100000 --reserved-seeds 23029 29033 32603 --output runs/nes-continued
 ```
 
 Steps are absolute RL-decision targets. Use new output folders and declare new
@@ -72,7 +72,7 @@ charged-runtime tests. Only load trusted full pickle-based training checkpoints.
 
 In the portable backup, checkpoints/nes-seed0-50000.pt resumes the final training
 state; checkpoints/nes-seed0-selected.pt resumes the selected earlier state.
-evidence/nes-learning records all actual final cases and the selected snapshot.
+nes-bot/evidence/nes-learning records all actual final cases and the selected snapshot.
 Training loss and update counts alone do not establish a strength improvement.
 
 ## First results: no reliable RL gain yet

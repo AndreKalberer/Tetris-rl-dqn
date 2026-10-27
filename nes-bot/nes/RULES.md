@@ -13,7 +13,7 @@ has not yet been demonstrated. Experimental NES learning is documented in
 - The code here is independently written. Only factual geometry and mechanical
   constants are represented; no ROM, disassembled game program or Nintendo art
   is distributed in this project.
-- The optional `tools/verify_nes_reference.py` reads SHA-256-pinned reference
+- The optional `nes-bot/tools/verify_nes_reference.py` reads SHA-256-pinned reference
   source files supplied separately. It assembles selected routines in memory
   using py65 1.2.0 and compares the results with this engine. It does not build
   a game ROM. The retained report identifies source/engine/verifier hashes.

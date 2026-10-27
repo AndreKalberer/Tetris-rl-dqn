@@ -3,7 +3,7 @@
 Fitness = share of games passing levels 150-159 ('mid' stretch of tools/zone_sim.py)
 with the real bot's selector, crash map and other zones. Simulation only.
 
-  python tools/tune_zone.py --output runs/tune-zone-157-v1
+  python nes-bot/tools/tune_zone.py --output runs/tune-zone-157-v1
 """
 import argparse
 import json
@@ -14,15 +14,16 @@ import time
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]  # nes-bot/
+REPO = ROOT.parent  # repository root: runs/ and progress.md live here
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT/'tools'))
 from nes_original import sim  # noqa: E402
 import zone_sim  # noqa: E402
 
-EXTRA = [[str(ROOT/'runs/lowstack-246-249.json'), 246, 249],
-         [str(ROOT/'runs/dellacherie-zone.json'), 168, 172, 28, 2],
-         [str(ROOT/'runs/dellacherie-zone.json'), 173, 173, 4, 2]]
+EXTRA = [[str(REPO/'runs/lowstack-246-249.json'), 246, 249],
+         [str(REPO/'runs/dellacherie-zone.json'), 168, 172, 28, 2],
+         [str(REPO/'runs/dellacherie-zone.json'), 173, 173, 4, 2]]
 
 
 def config_for(path):
@@ -32,7 +33,7 @@ def config_for(path):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--start', type=Path, default=ROOT/'runs/tune-nosingles-v2/weights.json')
+    p.add_argument('--start', type=Path, default=REPO/'runs/tune-nosingles-v2/weights.json')
     p.add_argument('--generations', type=int, default=15)
     p.add_argument('--population', type=int, default=14)
     p.add_argument('--games', type=int, default=160)
