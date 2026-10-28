@@ -10,7 +10,7 @@ Two weight vectors: "score" mode is used until the score reaches the original
 cap (999999) or the optional switch level, then "survive" mode for good. Each vector weights FEATURES below.
 """
 import numpy as np
-from numba import njit
+from numba import njit, prange
 
 from nes.engine import SPAWN
 from nes_original.fast import KINDS,ROTATE,SHAPES,collision,frame
@@ -28,8 +28,8 @@ FEATURES = BOARD_FEATURES+PLACEMENT_FEATURES+REACH_FEATURES
 N_REACH0 = len(BOARD_FEATURES)+len(PLACEMENT_FEATURES)
 # Highest column a piece can pass over at 30 Hz, level 29+ (fast simulator, measured):
 # a flat T/J/L/O tapped to the left wall, and a vertical I/O tapped to column 9.
-LEFT_LIMIT = np.asarray((7,7,7,8,10,12,14,20,20,20),dtype=np.int64)
-RIGHT_LIMIT = np.asarray((20,20,20,20,13,11,9,7,7,7),dtype=np.int64)
+LEFT_LIMIT = np.asarray((10,10,10,11,13,15,17,20,20,20),dtype=np.int64)
+RIGHT_LIMIT = np.asarray((20,20,20,20,16,14,12,10,10,10),dtype=np.int64)
 SCARE_HEIGHT = 4.
 # Default frames the controller waits after spawn before its first input (v8c: 3). Every
 # enumeration takes the wait as an explicit `reaction` argument; this is only the default.
@@ -518,6 +518,242 @@ def choose(board,state,next_orientation,level,start_level,lines,tap_period,react
     return chosen,n
 
 
+# NES randomizer odds P(next | previous) out of 64, rows/cols in T,J,Z,O,S,L,I order (StackRabbit's
+# piece_rng.cpp table; this simulator's _draw matches it within sampling noise).
+TRANSITION = np.asarray(((2,10,12,10,10,10,10),(12,2,10,10,10,10,10),(10,12,2,10,10,10,10),(10,10,10,4,10,10,10),
+    (10,10,10,10,4,10,10),(12,10,10,10,10,2,10),(10,10,10,10,12,10,2)),dtype=np.float64)/64.
+PIECE_TYPE = np.asarray((0,0,0,0,1,1,1,1,2,2,3,4,4,5,5,5,5,6,6),dtype=np.int64)
+
+
+@njit(cache=True)
+def _scored_lock(board,x,y,o,well,w,scratch):
+    """(result, dead, full value, placement part) of one final pose."""
+    result,cleared,dead = lock(board,x,y,o)
+    if dead:
+        return result,True,DEAD,0.
+    board_features(result,well,scratch)
+    placement_features(board,x,y,o,cleared,scratch)
+    value = 0.
+    part = 0.
+    for k in range(N_FEATURES):
+        value += w[k]*scratch[k]
+        if k>=N_BOARD:
+            part += w[k]*scratch[k]
+    return result,False,value,part
+
+
+@njit(cache=True)
+def _greedy(board,orientation,das,level,tap_period,reaction,well,w,states,scratch):
+    """Best one-ply placement: (board, das, dead, full value, placement part)."""
+    state,failed = spawn_state(orientation,das,board,level)
+    if failed:
+        return board,das,True,DEAD,0.
+    n = candidates(board,state,level,tap_period,states,reaction)
+    best = DEAD
+    chosen = -1
+    best_part = 0.
+    for i in range(n):
+        result,dead,value,part = _scored_lock(board,states[i,0],states[i,1],states[i,2],well,w,scratch)
+        if not dead and value>best:
+            best = value
+            chosen = i
+            best_part = part
+    if chosen<0:
+        return board,das,True,DEAD,0.
+    result,cleared,dead = lock(board,states[chosen,0],states[chosen,1],states[chosen,2])
+    return result,states[chosen,4],False,best,best_part
+
+
+@njit(cache=True)
+def playout_sequences(last_type,length):
+    """Every piece sequence of `length` (as spawn orientations) and its NES probability."""
+    m = 7**length
+    seqs = np.zeros((m,length),np.int64)
+    prob = np.zeros(m)
+    for s in range(m):
+        code = s
+        p = 1.
+        previous = last_type
+        for j in range(length):
+            t = code%7
+            code //= 7
+            seqs[s,j] = SPAWNS[t]
+            p *= TRANSITION[previous,t]
+            previous = t
+        prob[s] = p
+    return seqs,prob
+
+
+@njit(cache=True)
+def playout_scores(roots,root_part,root_das,next_orientation,level,tap_period,reaction,well,w,keep,cap,length,death):
+    """StackRabbit-style playouts over current-piece result boards.
+
+    roots[i] is the board after the current piece's placement i (root_part[i] its placement
+    value, root_das[i] the DAS after it; root_part[i]<=DEAD/2 skips it). Every (i, next placement)
+    pair is ranked by root_part+full value; the best `keep` pairs (at most `cap` per root) are
+    played out over all 7**length following-piece sequences, weighted by NES odds from the next
+    piece and placed greedily with w. A playout scores its placement rewards plus the final
+    full value, or `death` plus the rewards so far if it tops out. Returns, per root, the best
+    pair score (two placement rewards + expected playout score), or DEAD if not expanded.
+    """
+    chosen_root,chosen_pose,chosen_reward = playout_rank(roots,root_part,root_das,next_orientation,level,
+        tap_period,reaction,well,w,keep,cap)
+    totals = playout_expand(roots,chosen_root,chosen_pose,next_orientation,level,tap_period,reaction,well,w,
+        length,death,0,chosen_root.shape[0])
+    return playout_combine(roots.shape[0],chosen_root,chosen_reward,totals)
+
+
+@njit(cache=True)
+def playout_rank(roots,root_part,root_das,next_orientation,level,tap_period,reaction,well,w,keep,cap):
+    """The (current, next) pairs to play out, best first (see playout_scores).
+
+    Returns (root index, next-piece pose x/y/orientation/das, two placement rewards) per pair."""
+    k_roots = roots.shape[0]
+    size = k_roots*MAX_CANDIDATES
+    pair_ok = np.zeros(size,np.bool_)
+    pair_value = np.full(size,DEAD)
+    pair_reward = np.zeros(size)
+    pair_pose = np.zeros((size,4),np.int64)
+    for i in range(k_roots):
+        if root_part[i]<=DEAD/2:
+            continue
+        state,failed = spawn_state(next_orientation,root_das[i],roots[i],level)
+        if failed:
+            continue
+        states = np.zeros((MAX_CANDIDATES,9),np.int64)
+        scratch = np.zeros(N_FEATURES)
+        m = candidates(roots[i],state,level,tap_period,states,reaction)
+        for j in range(m):
+            result,dead,value,part = _scored_lock(roots[i],states[j,0],states[j,1],states[j,2],well,w,scratch)
+            if dead:
+                continue
+            q = i*MAX_CANDIDATES+j
+            pair_ok[q] = True
+            pair_value[q] = root_part[i]+value
+            pair_reward[q] = root_part[i]+part
+            pair_pose[q,0] = states[j,0]
+            pair_pose[q,1] = states[j,1]
+            pair_pose[q,2] = states[j,2]
+            pair_pose[q,3] = states[j,4]
+    # Compact in root-major order, as a serial scan would list them.
+    count = 0
+    index = np.zeros(size,np.int64)
+    for q in range(size):
+        if pair_ok[q]:
+            index[count] = q
+            count += 1
+    order = np.argsort(-pair_value[index[:count]])
+    used = np.zeros(k_roots,np.int64)
+    chosen_root = np.zeros(keep,np.int64)
+    chosen_pose = np.zeros((keep,4),np.int64)
+    chosen_reward = np.zeros(keep)
+    expanded = 0
+    for r in range(count):
+        if expanded>=keep:
+            break
+        q = index[order[r]]
+        i = q//MAX_CANDIDATES
+        if used[i]>=cap:
+            continue
+        used[i] += 1
+        chosen_root[expanded] = i
+        chosen_pose[expanded] = pair_pose[q]
+        chosen_reward[expanded] = pair_reward[q]
+        expanded += 1
+    return chosen_root[:expanded],chosen_pose[:expanded],chosen_reward[:expanded]
+
+
+@njit(cache=True,parallel=True)
+def playout_expand(roots,chosen_root,chosen_pose,next_orientation,level,tap_period,reaction,well,w,length,death,
+                   first,last):
+    """Expected playout scores of chosen pairs first..last-1 (see playout_rank)."""
+    seqs,prob = playout_sequences(PIECE_TYPE[next_orientation],length)
+    totals = np.zeros(last-first)
+    for e in prange(last-first):
+        totals[e] = _playout_total(roots[chosen_root[first+e]],chosen_pose[first+e],seqs,prob,level,tap_period,
+            reaction,well,w,length,death)
+    return totals
+
+
+@njit(cache=True)
+def playout_combine(k_roots,chosen_root,chosen_reward,totals):
+    """Per root: the best expanded pair score, or DEAD."""
+    out = np.full(k_roots,DEAD)
+    for e in range(totals.shape[0]):
+        i = chosen_root[e]
+        out[i] = max(out[i],chosen_reward[e]+totals[e])
+    return out
+
+
+@njit(cache=True)
+def _playout_total(root,pose,seqs,prob,level,tap_period,reaction,well,w,length,death):
+    """Expected greedy playout score after one (current, next) pair; see playout_scores."""
+    deep = np.zeros((MAX_CANDIDATES,9),np.int64)
+    scratch = np.zeros(N_FEATURES)
+    start,cleared,dead = lock(root,pose[0],pose[1],pose[2])
+    # The first playout piece only has 7 cases: place each once and reuse it.
+    first_board = np.zeros((7,20,10),np.bool_)
+    first_das = np.zeros(7,np.int64)
+    first_dead = np.zeros(7,np.bool_)
+    first_v = np.zeros(7)
+    first_part = np.zeros(7)
+    for t in range(7):
+        fb,fdas,fdead,fv,fpart = _greedy(start,SPAWNS[t],pose[3],level,tap_period,reaction,well,w,deep,scratch)
+        first_board[t] = fb
+        first_das[t] = fdas
+        first_dead[t] = fdead
+        first_v[t] = fv
+        first_part[t] = fpart
+    total = 0.
+    for s in range(seqs.shape[0]):
+        reward = 0.
+        value = death
+        t = s%7
+        board,das,dead,v,part = first_board[t],first_das[t],first_dead[t],first_v[t],first_part[t]
+        for j in range(length):
+            if j>0:
+                board,das,dead,v,part = _greedy(board,seqs[s,j],das,level,tap_period,reaction,well,w,deep,scratch)
+            if dead:
+                value = death+reward
+                break
+            if j==length-1:
+                value = reward+v
+            else:
+                reward += part
+        total += prob[s]*value
+    return total
+
+
+@njit(cache=True)
+def playout_choose(board,state,next_orientation,level,tap_period,reaction,well,w,keep,cap,length,death,ban=0):
+    """Return (candidate index, n candidates) using playout_scores over every placement."""
+    states = np.zeros((MAX_CANDIDATES,9),np.int64)
+    n = candidates(board,state,level,tap_period,states,reaction)
+    if n==0:
+        return 0,0
+    scratch = np.zeros(N_FEATURES)
+    roots = np.zeros((n,20,10),np.bool_)
+    part = np.full(n,DEAD)
+    das = np.zeros(n,np.int64)
+    values = np.full(n,DEAD)
+    for i in range(n):
+        result,cleared,dead = lock(board,states[i,0],states[i,1],states[i,2])
+        if dead:
+            continue
+        result,dead,value,p = _scored_lock(board,states[i,0],states[i,1],states[i,2],well,w,scratch)
+        if ban>>cleared&1:
+            value += BANNED
+            p += BANNED
+        roots[i] = result
+        part[i] = p
+        das[i] = states[i,4]
+        values[i] = value
+    scores = playout_scores(roots,part,das,next_orientation,level,tap_period,reaction,well,w,keep,cap,length,death)
+    if scores.max()<=DEAD:
+        return int(np.argmax(values)),n
+    return int(np.argmax(scores)),n
+
+
 @njit(cache=True)
 def _lfsr(state):
     return (state>>1)|((((state>>1)^(state>>9))&1)<<15)
@@ -536,8 +772,13 @@ def _draw(state,count,last):
 @njit(cache=True)
 def play(w_score,w_survive,seed,start_level,max_lines,tap_period,well,beam,initial_score,max_placements,
          stop_at_maxout=False,well_survive=-1,switch_level=999,expect=0,ban=0,ban_from=0,child_ban=False,
-         ban_w=np.zeros(0),alt_w=np.zeros(0),alt_below=0,alt_well=9,reaction=REACTION):
-    """One simulated game. Returns an int64 stats vector (see GAME_STATS)."""
+         ban_w=np.zeros(0),alt_w=np.zeros(0),alt_below=0,alt_well=9,reaction=REACTION,
+         playout_top=0,playout_cap=4,playout_length=2,playout_death=-1000.):
+    """One simulated game. Returns an int64 stats vector (see GAME_STATS).
+
+    playout_top>0 replaces the beam/expect search with playout_choose while the alt
+    (low-stack tetris) or burn weights are in use, i.e. when alt_w is given and survive mode is on.
+    """
     rng = 0x8988
     for _ in range(seed%32767):
         rng = _lfsr(rng)
@@ -558,6 +799,7 @@ def play(w_score,w_survive,seed,start_level,max_lines,tap_period,well,beam,initi
     maxout_lines = -1 if score<MAXED else 0
     while lines<max_lines and placements<max_placements:
         survive = score>=MAXED or level>=switch_level
+        use_playout = playout_top>0 and survive and alt_w.shape[0]==N_FEATURES and alt_below>0
         w = w_survive if survive else w_score
         mode_well = well_survive if survive else well
         if ban and lines>=ban_from and ban_w.shape[0]==N_FEATURES:
@@ -579,8 +821,13 @@ def play(w_score,w_survive,seed,start_level,max_lines,tap_period,well,beam,initi
         if failed:
             dead = True
             break
-        index,n = choose(board,state,upcoming,level,start_level,lines,tap_period,reaction,mode_well,w,beam,states,child_states,
-            expect,ban if lines>=ban_from else 0,child_ban)
+        if use_playout:
+            index,n = playout_choose(board,state,upcoming,level,tap_period,reaction,mode_well,w,playout_top,playout_cap,
+                playout_length,playout_death)
+            candidates(board,state,level,tap_period,states,reaction)
+        else:
+            index,n = choose(board,state,upcoming,level,start_level,lines,tap_period,reaction,mode_well,w,beam,states,
+                child_states,expect,ban if lines>=ban_from else 0,child_ban)
         if n==0:
             dead = True
             break
@@ -625,12 +872,14 @@ GAME_STATS = ('lines','score','placements','dead','level','maxout_lines','single
 def play_game(w_score=DEFAULT_SCORE,w_survive=DEFAULT_SURVIVE,*,seed=0,start_level=18,max_lines=400,
               tap_period=2,well=9,beam=0,initial_score=0,max_placements=100000,stop_at_maxout=False,
               well_survive=-1,switch_level=999,expect=0,ban=0,ban_from=0,child_ban=False,ban_weights=None,
-              alt_weights=None,alt_below=0,alt_well=9,reaction=REACTION):
+              alt_weights=None,alt_below=0,alt_well=9,reaction=REACTION,playout_top=0,playout_cap=4,playout_length=2,
+              playout_death=-1000.):
     out = play(np.asarray(w_score,dtype=np.float64),np.asarray(w_survive,dtype=np.float64),int(seed),
         int(start_level),int(max_lines),int(tap_period),int(well),int(beam),int(initial_score),int(max_placements),
         bool(stop_at_maxout),int(well_survive),int(switch_level),int(expect),int(ban),int(ban_from),bool(child_ban),
         np.zeros(0) if ban_weights is None else np.asarray(ban_weights,dtype=np.float64),
-        np.zeros(0) if alt_weights is None else np.asarray(alt_weights,dtype=np.float64),int(alt_below),int(alt_well),int(reaction))
+        np.zeros(0) if alt_weights is None else np.asarray(alt_weights,dtype=np.float64),int(alt_below),int(alt_well),int(reaction),
+        int(playout_top),int(playout_cap),int(playout_length),float(playout_death))
     return dict(zip(GAME_STATS,(int(v) for v in out)))
 
 
@@ -649,6 +898,7 @@ def action_features(observation,plan,well=9):
         board_features(np.asarray(after)!=0,well,rows[i])
         placement_features(before,control.x,control.y,control.orientation,int(cleared),rows[i])
     return rows
+
 
 
 class TunedSelector:
@@ -684,6 +934,12 @@ class TunedSelector:
         self.alt_ban = 0
         self.alt_expect = None
         self.burn_expect = None
+        # StackRabbit-style playouts in the alt/burn modes (0 = off): pairs played out, max pairs
+        # per current placement, following pieces per playout, value of a playout top-out.
+        self.playout_top = 0
+        self.playout_cap = 4
+        self.playout_length = 2
+        self.playout_death = -1000.
         self.grand_states = np.zeros((MAX_CANDIDATES,9),np.int64)
         self.switched = False
         self.states = np.zeros((MAX_CANDIDATES,9),np.int64)
@@ -708,6 +964,7 @@ class TunedSelector:
         push_min,push_mask = push_rule(observation.level)
         in_zone = False
         root_ban = 0
+        use_playout = False
         for lo,hi,zone_w,zone_well,zone_ban,zone_expect in self.zones:
             if lo<=observation.level<=hi:
                 w,well,ban,expect = zone_w,zone_well,zone_ban,zone_expect
@@ -722,11 +979,13 @@ class TunedSelector:
                     ban = root_ban = self.alt_ban
                     if self.alt_expect is not None:
                         expect = self.alt_expect
+                    use_playout = self.playout_top>0
                     self.modes['alt'] += 1
                 elif burn is not None:
                     w,well = burn,-1
                     if self.burn_expect is not None:
                         expect = self.burn_expect
+                    use_playout = self.playout_top>0
                     self.modes['burn'] = self.modes.get('burn',0)+1
         actions = plan.actions
         rows = action_features(observation,plan,well)
@@ -737,7 +996,7 @@ class TunedSelector:
         else:
             banned = None
         values[np.asarray(actions.terminal,dtype=bool)] = DEAD
-        if self.beam<=0:
+        if self.beam<=0 and not use_playout:
             return values
         from nes.engine import SPAWN as spawn, TYPE
         from nes_original.progression import after_clear
@@ -749,6 +1008,8 @@ class TunedSelector:
         else:
             return values  # Preview not readable this frame: one-ply values only.
         placement = rows[:,N_BOARD:]@w[N_BOARD:]
+        if use_playout:
+            return self._playout_values(observation,actions,values,placement,banned,next_orientation,well,w)
         result = values.copy()
         seen = set()
         for i in np.argsort(-values,kind='stable'):
@@ -775,12 +1036,32 @@ class TunedSelector:
                 result[i] += BANNED
         return result
 
+    def _playout_values(self,observation,actions,values,placement,banned,next_orientation,well,w):
+        """Rank proposals by playout_scores; expanded proposals stay above unexpanded ones."""
+        k = len(values)
+        roots = np.zeros((k,20,10),np.bool_)
+        part = np.full(k,DEAD)
+        das = np.zeros(k,np.int64)
+        for i in range(k):
+            if values[i]<=DEAD:
+                continue
+            roots[i] = np.asarray(actions.boards[i])!=0
+            part[i] = placement[i]+(BANNED if banned is not None and banned[i] else 0.)
+            das[i] = actions.controls[i].das
+        scores = playout_scores(roots,part,das,next_orientation,min(int(observation.level),29),self.tap_period,
+            self.reaction,well,w,self.playout_top,self.playout_cap,self.playout_length,self.playout_death)
+        result = values.copy()
+        expanded = scores>DEAD
+        result[expanded] = 1.e6+scores[expanded]
+        return result
+
     def __call__(self,observation,plan):
         return int(np.argmax(self.score_actions(observation,plan)))
 
     def stats(self):
         return dict(calls=self.calls,modes=dict(self.modes),reaction=self.reaction,
             alt=None if self.alt is None else dict(below=self.alt[1],well=self.alt[2],levels=self.alt[3]),well=self.well,well_survive=self.well_survive,beam=self.beam,switch_level=self.switch_level,expect=self.expect,
+            playout=dict(top=self.playout_top,cap=self.playout_cap,length=self.playout_length,death=self.playout_death),
             zones=[(lo,hi,zw,zb,ze) for lo,hi,_,zw,zb,ze in self.zones],
             information='Visible board, counters and single visible next piece only')
 
@@ -796,7 +1077,8 @@ def _zone_from_file(selector,path,lo,hi,ban,expect):
 
 
 def tuned_selector(weights='score_start',*,beam=3,expect=0,zone_weights=None,zone_levels=(156,158),
-                   zone_ban=2,zone_expect=2,extra_zones=(),reaction=REACTION,alt_weights=None,alt_levels=None):
+                   zone_ban=2,zone_expect=2,extra_zones=(),reaction=REACTION,alt_weights=None,alt_levels=None,
+                   playout_top=0,playout_cap=4,playout_length=2,playout_death=-1000.):
     """Build a TunedSelector from a tune.py weights.json or a built-in name.
 
     score_start: untuned tetris mode at levels18-28, Dellacherie after.
@@ -804,9 +1086,13 @@ def tuned_selector(weights='score_start',*,beam=3,expect=0,zone_weights=None,zon
     reaction: frames the controller waits after spawn before its first input.
     alt_weights: low-stack tetris weights.json (alt_weights, alt_below, alt_well[, alt_levels]),
     used outside the zones; alt_levels ((first, last), ...) overrides the file's levels.
+    playout_top>0: StackRabbit-style playouts (playout_scores) instead of beam/expect in the alt
+    and burn modes; playout_cap, playout_length and playout_death as in playout_scores.
     """
     selector = _build_selector(weights,beam,expect)
     selector.reaction = int(reaction)
+    selector.playout_top,selector.playout_cap = int(playout_top),int(playout_cap)
+    selector.playout_length,selector.playout_death = int(playout_length),float(playout_death)
     if alt_weights:
         import json
         from pathlib import Path
@@ -820,6 +1106,12 @@ def tuned_selector(weights='score_start',*,beam=3,expect=0,zone_weights=None,zon
         selector.alt_ban = int(data.get('alt_ban',0))
         selector.alt_expect = data.get('alt_expect')
         selector.burn_expect = data.get('burn_expect')
+        # A weights file may turn on playouts itself; explicit arguments win.
+        if not playout_top and data.get('playout_top'):
+            selector.playout_top = int(data['playout_top'])
+            selector.playout_cap = int(data.get('playout_cap',4))
+            selector.playout_length = int(data.get('playout_length',2))
+            selector.playout_death = float(data.get('playout_death',-1000.))
         selector.alt_source = str(alt_weights)
     if zone_weights:
         import json
@@ -874,6 +1166,10 @@ def warmup(selector):
                     expected_child(board,2,0,18,18,0,selector.tap_period,selector.reaction,well,w,expect,
                         selector.states,selector.grand_states,ban)
                 best_child(board,2,0,18,selector.tap_period,selector.reaction,well,w,out,selector.states,ban,3,6)
+        if selector.playout_top>0:
+            playout_scores(np.zeros((1,20,10),np.bool_),np.zeros(1),np.zeros(1,np.int64),2,29,selector.tap_period,
+                selector.reaction,well,w,selector.playout_top,selector.playout_cap,selector.playout_length,
+                selector.playout_death)
     return selector
 
 

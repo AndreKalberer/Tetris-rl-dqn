@@ -17,9 +17,13 @@ result exactly (`case_state: verified`). Seed = frames waited on the menu. Uncap
 |---|---|---|---|---|
 | score50 (`run-score50.sh`) | 957 | 3,290 | 58,187,903 | 185 |
 | score50 (`run-score50.sh`) | 24340 | 3,290 | 55,723,090 | 190 |
+| score80 (`run-score80.sh`) | 957 | 3,290 | 79,973,267 | 328 |
+| score80 (`run-score80.sh`) | 15868 | 3,291 | 80,891,827 | 328 |
 
-Both played headless on a Linux cloud machine; the uncapped score matched the real counter at
-every check (0 mismatches).
+All played headless on a Linux cloud machine; the uncapped score matched the real counter at
+every check (0 mismatches). A third score80 game (seed 24340) topped out at level 235 with
+52,874,509; the simulator, given the same pieces, makes the same 6,458 placements and tops out
+at the same point.
 
 ## Level 255
 

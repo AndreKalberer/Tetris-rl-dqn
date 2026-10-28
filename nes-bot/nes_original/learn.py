@@ -72,7 +72,7 @@ class Config:
                 self.batch_size,self.train_every,self.target_every,self.epsilon_steps,self.threads) < 1:
             raise ValueError('Invalid replay/update settings')
         ActionRules(horizontal_period=self.tap_period,reaction_frames=self.reaction_frames)
-        if self.late_plan not in ('replan','keep'):
+        if self.late_plan not in ('replan','keep','retarget'):
             raise ValueError("Late plan handling must be 'replan' or 'keep'")
         if self.prior not in ('heuristic','lookahead') or self.exploration_top_k<0:
             raise ValueError('Invalid prior/exploration mode')
