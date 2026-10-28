@@ -66,6 +66,41 @@ class ReactionFrameTests(unittest.TestCase):
         self.assertIsNone(controller.stage)
         self.assertEqual(controller.idle, 2)
 
+    def _retarget(self, fresh_boards):
+        import numpy as np
+        from unittest.mock import patch
+        controller = FeedbackController(tap_period=2, reaction_frames=0, late_plan='retarget')
+        obs = observation()
+        target = np.zeros((20, 10), np.uint8); target[19, 0] = 1
+        other = np.zeros((20, 10), np.uint8); other[19, 9] = 1
+        plan = SimpleNamespace(actions=SimpleNamespace(controls=[SimpleNamespace(x=0, orientation=2)],
+                                                       boards=[target]))
+        boards = {'target': target, 'other': other}
+        fresh = SimpleNamespace(actions=SimpleNamespace(
+            controls=[SimpleNamespace(x=9 if name == 'other' else 1, orientation=2) for name in fresh_boards],
+            boards=[boards[name] for name in fresh_boards]))
+        picks = []
+        controller.selector = lambda p: picks.append(p) or 0
+        with patch('nes_original.feedback.proposals', side_effect=[plan, fresh]), \
+                patch('nes_original.feedback.time.perf_counter', side_effect=[0.0, 0.020, 0.0, 0.002]):
+            controller.command(obs)                           # late plan: one idle frame
+            controller.command(obs)                           # first input frame: check
+        return controller, picks
+
+    def test_late_plan_retarget_keeps_a_reachable_board(self):
+        controller, picks = self._retarget(['other', 'target'])
+        self.assertEqual(controller.late_checks, 1)
+        self.assertEqual(controller.late_replans, 0)
+        self.assertEqual(controller.selected, 1)
+        self.assertEqual(controller.target_x, 1)
+        self.assertEqual(len(picks), 1)
+
+    def test_late_plan_retarget_replans_when_the_board_is_gone(self):
+        controller, picks = self._retarget(['other'])
+        self.assertEqual(controller.late_replans, 1)
+        self.assertEqual(controller.target_x, 9)
+        self.assertEqual(len(picks), 2)
+
     def test_late_plan_value_is_checked(self):
         with self.assertRaises(ValueError):
             FeedbackController(late_plan='wait')

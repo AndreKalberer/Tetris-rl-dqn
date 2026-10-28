@@ -68,7 +68,7 @@ def main():
     parser.add_argument('--reaction-frames', type=int, default=3,
                         help='neutral frames after spawn before the first input (planning time past '
                              'max(1, this) frames is charged as idle frames)')
-    parser.add_argument('--late-plan', choices=('replan', 'keep'), default='replan',
+    parser.add_argument('--late-plan', choices=('replan', 'keep', 'retarget'), default='replan',
                         help='plan over budget: replan from the new pose (v8c) or keep it and start late')
     parser.add_argument('--alt-weights',
                         help='tuned selectors: low-stack tetris weights.json used outside the zones')

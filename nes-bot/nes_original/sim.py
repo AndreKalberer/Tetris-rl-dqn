@@ -10,7 +10,7 @@ Two weight vectors: "score" mode is used until the score reaches the original
 cap (999999) or the optional switch level, then "survive" mode for good. Each vector weights FEATURES below.
 """
 import numpy as np
-from numba import njit
+from numba import njit, prange
 
 from nes.engine import SPAWN
 from nes_original.fast import KINDS,ROTATE,SHAPES,collision,frame
@@ -596,70 +596,132 @@ def playout_scores(roots,root_part,root_das,next_orientation,level,tap_period,re
     full value, or `death` plus the rewards so far if it tops out. Returns, per root, the best
     pair score (two placement rewards + expected playout score), or DEAD if not expanded.
     """
+    chosen_root,chosen_pose,chosen_reward = playout_rank(roots,root_part,root_das,next_orientation,level,
+        tap_period,reaction,well,w,keep,cap)
+    totals = playout_expand(roots,chosen_root,chosen_pose,next_orientation,level,tap_period,reaction,well,w,
+        length,death,0,chosen_root.shape[0])
+    return playout_combine(roots.shape[0],chosen_root,chosen_reward,totals)
+
+
+@njit(cache=True)
+def playout_rank(roots,root_part,root_das,next_orientation,level,tap_period,reaction,well,w,keep,cap):
+    """The (current, next) pairs to play out, best first (see playout_scores).
+
+    Returns (root index, next-piece pose x/y/orientation/das, two placement rewards) per pair."""
     k_roots = roots.shape[0]
-    out = np.full(k_roots,DEAD)
-    states = np.zeros((MAX_CANDIDATES,9),np.int64)
-    deep = np.zeros((MAX_CANDIDATES,9),np.int64)
-    scratch = np.zeros(N_FEATURES)
     size = k_roots*MAX_CANDIDATES
-    pair_root = np.zeros(size,np.int64)
+    pair_ok = np.zeros(size,np.bool_)
     pair_value = np.full(size,DEAD)
     pair_reward = np.zeros(size)
     pair_pose = np.zeros((size,4),np.int64)
-    count = 0
     for i in range(k_roots):
         if root_part[i]<=DEAD/2:
             continue
         state,failed = spawn_state(next_orientation,root_das[i],roots[i],level)
         if failed:
             continue
+        states = np.zeros((MAX_CANDIDATES,9),np.int64)
+        scratch = np.zeros(N_FEATURES)
         m = candidates(roots[i],state,level,tap_period,states,reaction)
         for j in range(m):
             result,dead,value,part = _scored_lock(roots[i],states[j,0],states[j,1],states[j,2],well,w,scratch)
             if dead:
                 continue
-            pair_root[count] = i
-            pair_value[count] = root_part[i]+value
-            pair_reward[count] = root_part[i]+part
-            pair_pose[count,0] = states[j,0]
-            pair_pose[count,1] = states[j,1]
-            pair_pose[count,2] = states[j,2]
-            pair_pose[count,3] = states[j,4]
+            q = i*MAX_CANDIDATES+j
+            pair_ok[q] = True
+            pair_value[q] = root_part[i]+value
+            pair_reward[q] = root_part[i]+part
+            pair_pose[q,0] = states[j,0]
+            pair_pose[q,1] = states[j,1]
+            pair_pose[q,2] = states[j,2]
+            pair_pose[q,3] = states[j,4]
+    # Compact in root-major order, as a serial scan would list them.
+    count = 0
+    index = np.zeros(size,np.int64)
+    for q in range(size):
+        if pair_ok[q]:
+            index[count] = q
             count += 1
-    if count==0:
-        return out
-    order = np.argsort(-pair_value[:count])
-    seqs,prob = playout_sequences(PIECE_TYPE[next_orientation],length)
+    order = np.argsort(-pair_value[index[:count]])
     used = np.zeros(k_roots,np.int64)
+    chosen_root = np.zeros(keep,np.int64)
+    chosen_pose = np.zeros((keep,4),np.int64)
+    chosen_reward = np.zeros(keep)
     expanded = 0
     for r in range(count):
         if expanded>=keep:
             break
-        k = order[r]
-        i = pair_root[k]
+        q = index[order[r]]
+        i = q//MAX_CANDIDATES
         if used[i]>=cap:
             continue
         used[i] += 1
+        chosen_root[expanded] = i
+        chosen_pose[expanded] = pair_pose[q]
+        chosen_reward[expanded] = pair_reward[q]
         expanded += 1
-        start,cleared,dead = lock(roots[i],pair_pose[k,0],pair_pose[k,1],pair_pose[k,2])
-        total = 0.
-        for s in range(seqs.shape[0]):
-            board = start
-            das = pair_pose[k,3]
-            reward = 0.
-            value = death
-            for j in range(length):
-                board,das,dead,v,part = _greedy(board,seqs[s,j],das,level,tap_period,reaction,well,w,deep,scratch)
-                if dead:
-                    value = death+reward
-                    break
-                if j==length-1:
-                    value = reward+v
-                else:
-                    reward += part
-            total += prob[s]*value
-        out[i] = max(out[i],pair_reward[k]+total)
+    return chosen_root[:expanded],chosen_pose[:expanded],chosen_reward[:expanded]
+
+
+@njit(cache=True,parallel=True)
+def playout_expand(roots,chosen_root,chosen_pose,next_orientation,level,tap_period,reaction,well,w,length,death,
+                   first,last):
+    """Expected playout scores of chosen pairs first..last-1 (see playout_rank)."""
+    seqs,prob = playout_sequences(PIECE_TYPE[next_orientation],length)
+    totals = np.zeros(last-first)
+    for e in prange(last-first):
+        totals[e] = _playout_total(roots[chosen_root[first+e]],chosen_pose[first+e],seqs,prob,level,tap_period,
+            reaction,well,w,length,death)
+    return totals
+
+
+@njit(cache=True)
+def playout_combine(k_roots,chosen_root,chosen_reward,totals):
+    """Per root: the best expanded pair score, or DEAD."""
+    out = np.full(k_roots,DEAD)
+    for e in range(totals.shape[0]):
+        i = chosen_root[e]
+        out[i] = max(out[i],chosen_reward[e]+totals[e])
     return out
+
+
+@njit(cache=True)
+def _playout_total(root,pose,seqs,prob,level,tap_period,reaction,well,w,length,death):
+    """Expected greedy playout score after one (current, next) pair; see playout_scores."""
+    deep = np.zeros((MAX_CANDIDATES,9),np.int64)
+    scratch = np.zeros(N_FEATURES)
+    start,cleared,dead = lock(root,pose[0],pose[1],pose[2])
+    # The first playout piece only has 7 cases: place each once and reuse it.
+    first_board = np.zeros((7,20,10),np.bool_)
+    first_das = np.zeros(7,np.int64)
+    first_dead = np.zeros(7,np.bool_)
+    first_v = np.zeros(7)
+    first_part = np.zeros(7)
+    for t in range(7):
+        fb,fdas,fdead,fv,fpart = _greedy(start,SPAWNS[t],pose[3],level,tap_period,reaction,well,w,deep,scratch)
+        first_board[t] = fb
+        first_das[t] = fdas
+        first_dead[t] = fdead
+        first_v[t] = fv
+        first_part[t] = fpart
+    total = 0.
+    for s in range(seqs.shape[0]):
+        reward = 0.
+        value = death
+        t = s%7
+        board,das,dead,v,part = first_board[t],first_das[t],first_dead[t],first_v[t],first_part[t]
+        for j in range(length):
+            if j>0:
+                board,das,dead,v,part = _greedy(board,seqs[s,j],das,level,tap_period,reaction,well,w,deep,scratch)
+            if dead:
+                value = death+reward
+                break
+            if j==length-1:
+                value = reward+v
+            else:
+                reward += part
+        total += prob[s]*value
+    return total
 
 
 @njit(cache=True)
@@ -836,6 +898,7 @@ def action_features(observation,plan,well=9):
         board_features(np.asarray(after)!=0,well,rows[i])
         placement_features(before,control.x,control.y,control.orientation,int(cleared),rows[i])
     return rows
+
 
 
 class TunedSelector:
@@ -1043,6 +1106,12 @@ def tuned_selector(weights='score_start',*,beam=3,expect=0,zone_weights=None,zon
         selector.alt_ban = int(data.get('alt_ban',0))
         selector.alt_expect = data.get('alt_expect')
         selector.burn_expect = data.get('burn_expect')
+        # A weights file may turn on playouts itself; explicit arguments win.
+        if not playout_top and data.get('playout_top'):
+            selector.playout_top = int(data['playout_top'])
+            selector.playout_cap = int(data.get('playout_cap',4))
+            selector.playout_length = int(data.get('playout_length',2))
+            selector.playout_death = float(data.get('playout_death',-1000.))
         selector.alt_source = str(alt_weights)
     if zone_weights:
         import json

@@ -38,9 +38,10 @@ class FeedbackController:
             raise ValueError('Reaction frames must be an integer0..10')
         self.reaction_frames = reaction_frames
         # 'replan' discards an over-budget plan and replans from the new pose (v8c); 'keep' starts
-        # it late by the planning time.
-        if late_plan not in ('replan', 'keep'):
-            raise ValueError("Late plan handling must be 'replan' or 'keep'")
+        # it late by the planning time; 'retarget' keeps it too, but once the late frames have
+        # passed it checks the chosen board is still reachable and replans only if it is not.
+        if late_plan not in ('replan', 'keep', 'retarget'):
+            raise ValueError("Late plan handling must be 'replan', 'keep' or 'retarget'")
         self.late_plan = late_plan
         self.context_selector = context_selector
         self.tap_period = tap_period
@@ -87,8 +88,15 @@ class FeedbackController:
         self.top_boundary_locks = 0
         self.piece_type_differences = 0
         self.planning_seconds = 0.0
+        self.late_check = False
+        self.late_checks = self.late_replans = 0
         self._invalid_pose_key = self._invalid_pose_frame = None
         self._observation_wait_orientation = None
+
+    def _select(self,obs,plan):
+        return (int(self.context_selector(obs,plan)) if plan and self.context_selector else
+                int(self.selector(plan)) if plan and self.selector else
+                int(plan.actions.heuristic.argmax()) if plan else 0)
 
     def start_plan(self,obs,plan,selected):
         if self.stage:
@@ -139,25 +147,48 @@ class FeedbackController:
         if self.stage is None:
             start = time.perf_counter()
             plan = proposals(obs,self.rules,board_input=True)
-            selected = (int(self.context_selector(obs,plan)) if plan and self.context_selector else
-                        int(self.selector(plan)) if plan and self.selector else
-                        int(plan.actions.heuristic.argmax()) if plan else 0)
+            selected = self._select(obs,plan)
             elapsed = time.perf_counter()-start
             self.plans += 1
             self.planning_seconds += elapsed
             if elapsed > max(1, self.reaction_frames)/FPS:
                 self.overruns += 1
                 if not self.fixed_reaction:
-                    if self.late_plan == 'keep':
+                    if self.late_plan in ('keep', 'retarget'):
                         # This frame plus idle frames: the planning time past the first frame.
                         self.start_plan(obs,plan,selected)
                         self.idle = max(0,int(np.ceil(elapsed*FPS))-2)
                         self.extra_idle_frames += 1
+                        self.late_check = self.late_plan == 'retarget' and plan is not None
                         return 0
                     self.idle = max(0,int(np.ceil(elapsed*FPS))-1)
                     self.extra_idle_frames += 1
                     return 0
             self.start_plan(obs,plan,selected)
+        elif self.late_check and self.stage == 'active':
+            # First input frame of a late plan: the piece has fallen meanwhile. Keep the chosen
+            # board if the current pose still reaches it, else choose again from here.
+            self.late_check = False
+            self.late_checks += 1
+            start = time.perf_counter()
+            target = self.plan.actions.boards[self.selected] != 0
+            fresh = proposals(obs,self.rules,board_input=True)
+            if fresh is not None:
+                same = [i for i,board in enumerate(fresh.actions.boards)
+                        if np.array_equal(np.asarray(board) != 0, target)]
+                self.stage = None
+                if same:
+                    self.start_plan(obs,fresh,same[0])
+                else:
+                    self.late_replans += 1
+                    self.start_plan(obs,fresh,self._select(obs,fresh))
+                elapsed = time.perf_counter()-start
+                self.planning_seconds += elapsed
+                if elapsed > 1/FPS and not self.fixed_reaction:
+                    self.overruns += 1
+                    self.idle = max(0,int(np.ceil(elapsed*FPS))-2)
+                    self.extra_idle_frames += 1
+                    return 0
         frame = self.elapsed
         self.elapsed += 1
         if frame < self.reaction_frames:
@@ -350,7 +381,8 @@ class FeedbackController:
             board_audit_failures=self.board_audit_failures,top_boundary_locks=self.top_boundary_locks,
             piece_type_differences=self.piece_type_differences,
             action_interface='Native feedback targets; approximate proposal features',
-            reaction_frames=self.reaction_frames,late_plan=self.late_plan,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
+            reaction_frames=self.reaction_frames,late_plan=self.late_plan,
+            late_checks=self.late_checks,late_replans=self.late_replans,navigation_frames=48,horizontal_change_period=6 if not self.tap_period else 1,
             horizontal_pulse_period=self.tap_period,rotation_period=4,
             no_softdrop_at_1g=self.no_softdrop_at_1g,
             no_softdrop_levels=sorted(self.no_softdrop_levels),

@@ -125,7 +125,9 @@ def play(job):
         state, failed = sim.frame(board, (5, 0, int(current), 0, das, 0, 0, 0), 0, gravity_level)
         if failed:
             return end('top_out')
-        n = sim.candidates(board, state, gravity_level, 2, states, reaction)
+        # Optional: a late plan (over one frame) loses the first input frame for this piece.
+        late = config.get('late_prob') and rng.random() < config['late_prob']
+        n = sim.candidates(board, state, gravity_level, 2, states, reaction+1 if late else reaction)
         boards, cleared, dead, controls, frames = [], [], [], [], []
         seen = {}
         for i in range(n):
@@ -219,6 +221,8 @@ def main():
     p.add_argument('--playout-cap', type=int, default=4, help='max played-out pairs per current-piece placement')
     p.add_argument('--playout-length', type=int, default=2, help='unknown pieces per playout (7**N sequences)')
     p.add_argument('--playout-death', type=float, default=-1000., help='value of a playout that tops out')
+    p.add_argument('--late-prob', type=float, default=0.,
+                   help='chance per piece that the plan is one frame late (its first input frame is lost)')
     p.add_argument('--output', type=Path)
     args = p.parse_args()
     extra = args.extra_zone if args.extra_zone is not None else [[str(REPO/'runs/lowstack-246-249.json'), '246', '249']]
@@ -233,7 +237,7 @@ def main():
                   if args.alt_levels else None, stop_lines=args.stop_lines,
                   playout=dict(playout_top=args.playout_top, playout_cap=args.playout_cap,
                                playout_length=args.playout_length, playout_death=args.playout_death)
-                  if args.playout_top else None)
+                  if args.playout_top else None, late_prob=args.late_prob)
     if args.start_board:
         data = json.loads(args.start_board.read_text())
         rows = data['rows'] if isinstance(data, dict) else data

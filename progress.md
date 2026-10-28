@@ -1,3 +1,7 @@
+October 28, 2026 — 80M score bot
+
+New score bot `nes-bot/tools/run-score80.sh`: 8-row tetris stack with StackRabbit-style 2-piece playouts (top 12 pairs, 3 planner threads, about 10 ms per plan) and `--late-plan retarget`. Sim: 80.4M per lap, 98/100 laps survived. Verified real games: seed 957 79,973,267 and seed 15868 80,891,827, both at level 255. Seed 24340 topped out at 235 (52.9M), move for move as in the sim.
+
 October 27, 2026 — 50M score bot
 
 New score bot `nes-bot/tools/run-score50.sh` (CEM-tuned tetris weights with a 3rd-piece expectation). Sim: 58.3M per lap, 98.5% of laps survived. Verified real games: seed 957 58,187,903 and seed 24340 55,723,090, both at level 255.
