@@ -725,6 +725,88 @@ def _playout_total(root,pose,seqs,prob,level,tap_period,reaction,well,w,length,d
 
 
 @njit(cache=True)
+def value_net(board,W1,b1,W2,b2,W3,b3):
+    """Learned leaf value of a board: MLP over the 200 cells plus 10 column heights / 20 (ReLU, 2 hidden layers)."""
+    H = b1.shape[0]
+    h1 = b1.copy()
+    for c in range(10):
+        hc = 0
+        for r in range(20):
+            if board[r,c]:
+                if hc==0:
+                    hc = 20-r
+                k = r*10+c
+                for j in range(H):
+                    h1[j] += W1[j,k]
+        if hc>0:
+            for j in range(H):
+                h1[j] += W1[j,200+c]*(hc/20.)
+    out = b3[0]
+    for i in range(b2.shape[0]):
+        a = b2[i]
+        for j in range(H):
+            if h1[j]>0.:
+                a += W2[i,j]*h1[j]
+        if a>0.:
+            out += W3[0,i]*a
+    return out
+
+
+@njit(cache=True)
+def _playout_total_net(root,pose,seqs,prob,level,tap_period,reaction,well,w,length,death,lam,W1,b1,W2,b2,W3,b3):
+    """_playout_total with lam*value_net(final board) added to every surviving playout."""
+    deep = np.zeros((MAX_CANDIDATES,9),np.int64)
+    scratch = np.zeros(N_FEATURES)
+    start,cleared,dead = lock(root,pose[0],pose[1],pose[2])
+    total = 0.
+    for s in range(seqs.shape[0]):
+        board = start
+        das = pose[3]
+        reward = 0.
+        value = death
+        for j in range(length):
+            board,das,dead,v,part = _greedy(board,seqs[s,j],das,level,tap_period,reaction,well,w,deep,scratch)
+            if dead:
+                value = death+reward
+                break
+            if j==length-1:
+                value = reward+v+lam*value_net(board,W1,b1,W2,b2,W3,b3)
+            else:
+                reward += part
+        total += prob[s]*value
+    return total
+
+
+@njit(cache=True,parallel=True)
+def playout_expand_net(roots,chosen_root,chosen_pose,next_orientation,level,tap_period,reaction,well,w,length,death,
+                       lam,W1,b1,W2,b2,W3,b3):
+    """playout_expand with the learned leaf value (see _playout_total_net)."""
+    seqs,prob = playout_sequences(PIECE_TYPE[next_orientation],length)
+    totals = np.zeros(chosen_root.shape[0])
+    for e in prange(chosen_root.shape[0]):
+        totals[e] = _playout_total_net(roots[chosen_root[e]],chosen_pose[e],seqs,prob,level,tap_period,reaction,
+            well,w,length,death,lam,W1,b1,W2,b2,W3,b3)
+    return totals
+
+
+@njit(cache=True)
+def playout_scores_net(roots,root_part,root_das,next_orientation,level,tap_period,reaction,well,w,keep,cap,length,
+                       death,lam,W1,b1,W2,b2,W3,b3):
+    """playout_scores with lam*value_net added at the playout leaves."""
+    chosen_root,chosen_pose,chosen_reward = playout_rank(roots,root_part,root_das,next_orientation,level,
+        tap_period,reaction,well,w,keep,cap)
+    totals = playout_expand_net(roots,chosen_root,chosen_pose,next_orientation,level,tap_period,reaction,well,w,
+        length,death,lam,W1,b1,W2,b2,W3,b3)
+    return playout_combine(roots.shape[0],chosen_root,chosen_reward,totals)
+
+
+def load_value_net(path):
+    """(W1,b1,W2,b2,W3,b3) float64 arrays from a value-net .npz file."""
+    data = np.load(path)
+    return tuple(np.ascontiguousarray(data[k],dtype=np.float64) for k in ('W1','b1','W2','b2','W3','b3'))
+
+
+@njit(cache=True)
 def playout_choose(board,state,next_orientation,level,tap_period,reaction,well,w,keep,cap,length,death,ban=0):
     """Return (candidate index, n candidates) using playout_scores over every placement."""
     states = np.zeros((MAX_CANDIDATES,9),np.int64)
@@ -937,6 +1019,10 @@ class TunedSelector:
         # StackRabbit-style playouts in the alt/burn modes (0 = off): pairs played out, max pairs
         # per current placement, following pieces per playout, value of a playout top-out.
         self.playout_top = 0
+        self.value_net = None
+        self.value_lam = 0.
+        self.value_levels = ((0,255),)
+        self.value_max_height = 20
         self.playout_cap = 4
         self.playout_length = 2
         self.playout_death = -1000.
@@ -1048,8 +1134,17 @@ class TunedSelector:
             roots[i] = np.asarray(actions.boards[i])!=0
             part[i] = placement[i]+(BANNED if banned is not None and banned[i] else 0.)
             das[i] = actions.controls[i].das
-        scores = playout_scores(roots,part,das,next_orientation,min(int(observation.level),29),self.tap_period,
-            self.reaction,well,w,self.playout_top,self.playout_cap,self.playout_length,self.playout_death)
+        level = min(int(observation.level),29)
+        use_net = self.value_net is not None and self.value_lam!=0. and any(a<=observation.level<=b for a,b in self.value_levels)
+        if use_net and self.value_max_height<20:
+            use_net = stack_height(observation.board)<=self.value_max_height
+        if use_net:
+            scores = playout_scores_net(roots,part,das,next_orientation,level,self.tap_period,self.reaction,well,w,
+                self.playout_top,self.playout_cap,self.playout_length,self.playout_death,self.value_lam,
+                *self.value_net)
+        else:
+            scores = playout_scores(roots,part,das,next_orientation,level,self.tap_period,self.reaction,well,w,
+                self.playout_top,self.playout_cap,self.playout_length,self.playout_death)
         result = values.copy()
         expanded = scores>DEAD
         result[expanded] = 1.e6+scores[expanded]
@@ -1112,6 +1207,15 @@ def tuned_selector(weights='score_start',*,beam=3,expect=0,zone_weights=None,zon
             selector.playout_cap = int(data.get('playout_cap',4))
             selector.playout_length = int(data.get('playout_length',2))
             selector.playout_death = float(data.get('playout_death',-1000.))
+        if data.get('value_net'):
+            from pathlib import Path
+            net = Path(data['value_net'])
+            if not net.is_absolute():
+                net = Path(alt_weights).parent/net
+            selector.value_net = load_value_net(net)
+            selector.value_lam = float(data.get('value_lam',0.))
+            selector.value_max_height = int(data.get('value_max_height',20))
+            selector.value_levels = tuple((int(a),int(b)) for a,b in data.get('value_levels',((0,255),)))
         selector.alt_source = str(alt_weights)
     if zone_weights:
         import json
@@ -1170,6 +1274,10 @@ def warmup(selector):
             playout_scores(np.zeros((1,20,10),np.bool_),np.zeros(1),np.zeros(1,np.int64),2,29,selector.tap_period,
                 selector.reaction,well,w,selector.playout_top,selector.playout_cap,selector.playout_length,
                 selector.playout_death)
+            if selector.value_net is not None:
+                playout_scores_net(np.zeros((1,20,10),np.bool_),np.zeros(1),np.zeros(1,np.int64),2,29,
+                    selector.tap_period,selector.reaction,well,w,selector.playout_top,selector.playout_cap,
+                    selector.playout_length,selector.playout_death,selector.value_lam,*selector.value_net)
     return selector
 
 

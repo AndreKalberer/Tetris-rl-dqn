@@ -19,11 +19,16 @@ result exactly (`case_state: verified`). Seed = frames waited on the menu. Uncap
 | score50 (`run-score50.sh`) | 24340 | 3,290 | 55,723,090 | 190 |
 | score80 (`run-score80.sh`) | 957 | 3,290 | 79,973,267 | 328 |
 | score80 (`run-score80.sh`) | 15868 | 3,291 | 80,891,827 | 328 |
+| score-vnet (`run-score-vnet.sh`) | 957 | 3,290 | 84,715,592 | 342 |
+| score-vnet (`run-score-vnet.sh`) | 15868 | 3,290 | 81,917,158 | 343 |
+| score-vnet (`run-score-vnet.sh`) | 24340 | 3,291 | 86,308,391 | 358 |
 
 All played headless on a Linux cloud machine; the uncapped score matched the real counter at
 every check (0 mismatches). A third score80 game (seed 24340) topped out at level 235 with
 52,874,509; the simulator, given the same pieces, makes the same 6,458 placements and tops out
 at the same point.
+The score-vnet bot (learned leaf value, gated) reached level 255 on all three seeds, including
+24340. Simulator: 82.4M per lap with 98/100 laps survived (score80 on the same 100 laps: 80.4M, 98/100).
 
 ## Level 255
 

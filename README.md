@@ -23,7 +23,7 @@ Two Tetris-playing bots, each judged only by results that are replayed and verif
 |---|---|---|
 | Reached level 255 | **20** | 3,290 lines each; uncapped score 22.13–22.53 million (mean 22,353,715). The cartridge's own counter stops at 999,999. |
 | Rebirth: level 255 → wrap to 0 → level 255 again | **1** | Absolute level 511, 6,651 lines, uncapped score 43,047,996 (bot v8b, seed 19211). |
-| Score bot: 80 million points in one lap | **2** | Level 255 with uncapped scores 79,973,267 and 80,891,827 (bot score80, seeds 957 and 15868). The simulator estimates 80.4M per lap with 98% of laps survived. Earlier 50M bot: 58,187,903 and 55,723,090. |
+| Score bot: 80+ million points in one lap | **5** | Level 255 with uncapped scores 84,715,592, 81,917,158 and 86,308,391 (bot score-vnet with a learned leaf value, seeds 957, 15868 and 24340), and 79,973,267 and 80,891,827 (bot score80). The simulator estimates 82.4M per lap for score-vnet with 98% of laps survived. Earlier 50M bot: 58,187,903 and 55,723,090. |
 | Current bot (v8c) | 6 of 7 | development games reached 255; the crash-zone simulator estimates about 94–95% per game (simulator estimate, not a verified rate). |
 
 **Offline Sprint v1** (this project's own modern ruleset) — details in
