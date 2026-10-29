@@ -1,3 +1,7 @@
+October 29, 2026 — learned leaf value (score-vnet)
+
+New launcher `nes-bot/tools/run-score-vnet.sh`: the 80M playout bot plus a small value net (`value-net-v3.npz`, MLP over the board) added at the playout leaves with weight 12, only at levels 176-243 and while the stack is at most 6 rows. Trained on 2.8M simulated 1G boards (`nes-bot/tools/value_net/`). Sim: 82.4M per lap, 98/100 laps survived (80M bot 80.4M, 98/100). Verified real games, all at level 255: seed 957 84,715,592, seed 15868 81,917,158, seed 24340 86,308,391. Without the stack gate the net costs survival (70/75 laps). Tried and not kept: wider tetris levels, a smooth height cost, CEM with playouts in the loop, a StackRabbit surface-rank feature, top 24 playouts, 3-piece playouts, a 9- or 10-row stack.
+
 October 28, 2026 — 80M score bot
 
 New score bot `nes-bot/tools/run-score80.sh`: 8-row tetris stack with StackRabbit-style 2-piece playouts (top 12 pairs, 3 planner threads, about 10 ms per plan) and `--late-plan retarget`. Sim: 80.4M per lap, 98/100 laps survived. Verified real games: seed 957 79,973,267 and seed 15868 80,891,827, both at level 255. Seed 24340 topped out at 235 (52.9M), move for move as in the sim.
